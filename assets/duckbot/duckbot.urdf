@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<robot name="duckbot">
+  <material name="yellow"><color rgba="0.96 0.70 0.08 1"/></material>
+  <material name="dark"><color rgba="0.11 0.14 0.18 1"/></material>
+  <material name="orange"><color rgba="0.94 0.30 0.05 1"/></material>
+
+  <link name="base_link">
+    <visual><geometry><sphere radius="0.15"/></geometry><material name="yellow"/></visual>
+  </link>
+
+  <link name="left_hip_yaw_link"><visual><geometry><sphere radius="0.035"/></geometry><material name="dark"/></visual></link>
+  <joint name="left_hip_yaw" type="revolute"><parent link="base_link"/><child link="left_hip_yaw_link"/><origin xyz="0 0.105 -0.11"/><axis xyz="0 0 1"/><limit lower="-0.65" upper="0.65" effort="8" velocity="8"/></joint>
+  <link name="left_hip_roll_link"/>
+  <joint name="left_hip_roll" type="revolute"><parent link="left_hip_yaw_link"/><child link="left_hip_roll_link"/><axis xyz="1 0 0"/><limit lower="-0.55" upper="0.55" effort="8" velocity="8"/></joint>
+  <link name="left_thigh_link"><visual><origin xyz="0 0 -0.09"/><geometry><cylinder radius="0.035" length="0.18"/></geometry><material name="yellow"/></visual></link>
+  <joint name="left_hip_pitch" type="revolute"><parent link="left_hip_roll_link"/><child link="left_thigh_link"/><axis xyz="0 1 0"/><limit lower="-1.1" upper="0.9" effort="8" velocity="8"/></joint>
+  <link name="left_shin_link"><visual><origin xyz="0 0 -0.085"/><geometry><cylinder radius="0.03" length="0.17"/></geometry><material name="yellow"/></visual></link>
+  <joint name="left_knee" type="revolute"><parent link="left_thigh_link"/><child link="left_shin_link"/><origin xyz="0 0 -0.18"/><axis xyz="0 1 0"/><limit lower="0" upper="1.45" effort="8" velocity="8"/></joint>
+  <link name="left_ankle_pitch_link"/>
+  <joint name="left_ankle_pitch" type="revolute"><parent link="left_shin_link"/><child link="left_ankle_pitch_link"/><origin xyz="0 0 -0.17"/><axis xyz="0 1 0"/><limit lower="-0.85" upper="0.65" effort="8" velocity="8"/></joint>
+  <link name="left_foot_link"><visual><origin xyz="0.035 0 -0.025"/><geometry><box size="0.19 0.11 0.05"/></geometry><material name="orange"/></visual></link>
+  <joint name="left_ankle_roll" type="revolute"><parent link="left_ankle_pitch_link"/><child link="left_foot_link"/><axis xyz="1 0 0"/><limit lower="-0.45" upper="0.45" effort="8" velocity="8"/></joint>
+
+  <link name="neck_pitch_link"><visual><origin xyz="0 0 0.0325"/><geometry><cylinder radius="0.025" length="0.065"/></geometry><material name="dark"/></visual></link>
+  <joint name="neck_pitch" type="revolute"><parent link="base_link"/><child link="neck_pitch_link"/><origin xyz="0 0 0.13"/><axis xyz="0 1 0"/><limit lower="-0.6" upper="0.6" effort="8" velocity="8"/></joint>
+  <link name="head_link"><visual><geometry><sphere radius="0.085"/></geometry><material name="yellow"/></visual><visual><origin xyz="0.095 0 -0.015"/><geometry><box size="0.11 0.11 0.044"/></geometry><material name="orange"/></visual></link>
+  <joint name="head_yaw" type="revolute"><parent link="neck_pitch_link"/><child link="head_link"/><origin xyz="0 0 0.075"/><axis xyz="0 0 1"/><limit lower="-1.0" upper="1.0" effort="8" velocity="8"/></joint>
+  <link name="head_camera_link"/>
+  <joint name="head_camera_joint" type="fixed"><parent link="head_link"/><child link="head_camera_link"/><origin xyz="0.075 0 0.025"/></joint>
+  <link name="imu_link"/>
+  <joint name="imu_joint" type="fixed"><parent link="base_link"/><child link="imu_link"/><origin xyz="0 0 0.04"/></joint>
+
+  <link name="right_hip_yaw_link"><visual><geometry><sphere radius="0.035"/></geometry><material name="dark"/></visual></link>
+  <joint name="right_hip_yaw" type="revolute"><parent link="base_link"/><child link="right_hip_yaw_link"/><origin xyz="0 -0.105 -0.11"/><axis xyz="0 0 1"/><limit lower="-0.65" upper="0.65" effort="8" velocity="8"/></joint>
+  <link name="right_hip_roll_link"/>
+  <joint name="right_hip_roll" type="revolute"><parent link="right_hip_yaw_link"/><child link="right_hip_roll_link"/><axis xyz="1 0 0"/><limit lower="-0.55" upper="0.55" effort="8" velocity="8"/></joint>
+  <link name="right_thigh_link"><visual><origin xyz="0 0 -0.09"/><geometry><cylinder radius="0.035" length="0.18"/></geometry><material name="yellow"/></visual></link>
+  <joint name="right_hip_pitch" type="revolute"><parent link="right_hip_roll_link"/><child link="right_thigh_link"/><axis xyz="0 1 0"/><limit lower="-1.1" upper="0.9" effort="8" velocity="8"/></joint>
+  <link name="right_shin_link"><visual><origin xyz="0 0 -0.085"/><geometry><cylinder radius="0.03" length="0.17"/></geometry><material name="yellow"/></visual></link>
+  <joint name="right_knee" type="revolute"><parent link="right_thigh_link"/><child link="right_shin_link"/><origin xyz="0 0 -0.18"/><axis xyz="0 1 0"/><limit lower="0" upper="1.45" effort="8" velocity="8"/></joint>
+  <link name="right_ankle_pitch_link"/>
+  <joint name="right_ankle_pitch" type="revolute"><parent link="right_shin_link"/><child link="right_ankle_pitch_link"/><origin xyz="0 0 -0.17"/><axis xyz="0 1 0"/><limit lower="-0.85" upper="0.65" effort="8" velocity="8"/></joint>
+  <link name="right_foot_link"><visual><origin xyz="0.035 0 -0.025"/><geometry><box size="0.19 0.11 0.05"/></geometry><material name="orange"/></visual></link>
+  <joint name="right_ankle_roll" type="revolute"><parent link="right_ankle_pitch_link"/><child link="right_foot_link"/><axis xyz="1 0 0"/><limit lower="-0.45" upper="0.45" effort="8" velocity="8"/></joint>
+</robot>

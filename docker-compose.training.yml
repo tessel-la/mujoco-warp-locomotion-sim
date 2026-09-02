@@ -1,0 +1,37 @@
+name: microduck-rl-training
+
+services:
+  microduck_rl_train:
+    build:
+      context: .
+      dockerfile: Dockerfile.training
+    image: microduck-rl-training:local
+    container_name: microduck_rl_train
+    runtime: nvidia
+    network_mode: host
+    ipc: host
+    shm_size: "8gb"
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: "compute,graphics,utility"
+      WANDB_API_KEY: "${WANDB_API_KEY:-}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - microduck_rl_logs:/workspace/microduck_rl/logs
+      - microduck_rl_wandb:/workspace/microduck_rl/wandb
+      - ./policies:/policies
+    command:
+      - train
+      - Mjlab-Velocity-Flat-MicroDuck
+      - --env.scene.num-envs
+      - "4096"
+
+volumes:
+  microduck_rl_logs:
+  microduck_rl_wandb:

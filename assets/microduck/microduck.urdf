@@ -1,0 +1,796 @@
+<?xml version="1.0"?>
+<!-- ROS visualization adapter; regenerate with tools/export_microduck_urdf.py. -->
+<robot name="pollen_microduck">
+  <!-- Generated from Pollen Robotics microduck_rl robot_allcollisions.xml; physics and training continue to use the original MJCF. -->
+  <link name="base_link" />
+  <link name="trunk_base">
+    <visual>
+      <origin xyz="0.006 0.0175 -0.005" rpy="-0 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.004 -0.0005 -0.0175" rpy="-0 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/right_shell.stl" />
+      </geometry>
+      <material name="right_shell_material">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.0042 -0 -0.0175215" rpy="0 0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/banana_pcb_locker.stl" />
+      </geometry>
+      <material name="banana_pcb_locker_material">
+        <color rgba="0.647059 0.647059 0.647059 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.004 -0 -0.0175" rpy="-0 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/trunk_base.stl" />
+      </geometry>
+      <material name="trunk_base_material">
+        <color rgba="0.34902 0.376471 0.4 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.006 0.0175 0.0115" rpy="3.14159265359 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.004 -0 -0.0175215" rpy="0 0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/power_support.stl" />
+      </geometry>
+      <material name="power_support_material">
+        <color rgba="0.901961 0.901961 0.901961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0359693 0 -0.00385049" rpy="3.12413937147 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/np_f970.stl" />
+      </geometry>
+      <material name="np_f970_material">
+        <color rgba="0.901961 0.901961 0.901961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.006 -0.0175 0.0115" rpy="3.14159265359 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.004 -0 -0.0175785" rpy="0 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/left_shell.stl" />
+      </geometry>
+      <material name="left_shell_material">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.006 -0.0175 -0.005" rpy="-0 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="base_link_to_trunk_base" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="trunk_base" />
+  </joint>
+  <link name="imu_link" />
+  <joint name="trunk_base_to_imu_link" type="fixed">
+    <origin xyz="-0.021 6.64098e-05 -0.0146984" rpy="-0 -0 0" />
+    <parent link="trunk_base" />
+    <child link="imu_link" />
+  </joint>
+  <link name="yaw2roll">
+    <visual>
+      <origin xyz="-0.0175 -0.002 0.0125" rpy="3.14159265359 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/yaw2roll.stl" />
+      </geometry>
+      <material name="yaw2roll_material">
+        <color rgba="0.647059 0.647059 0.647059 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0 0.0125" rpy="-3.14159265359 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0.0165 0.0125" rpy="1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0175 -0.002 0.0125" rpy="3.14159265359 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/bearing_roll.stl" />
+      </geometry>
+      <material name="bearing_roll_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_hip_yaw" type="revolute">
+    <origin xyz="0.006 0.0175 -0.005" rpy="3.14159265359 -0 1.57079632679" />
+    <parent link="trunk_base" />
+    <child link="yaw2roll" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.436332312999" upper="0.523598775598" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="hip_l">
+    <visual>
+      <origin xyz="0.021 0 -0.0185" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 -0 -0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/hip_l.stl" />
+      </geometry>
+      <material name="hip_l_material">
+        <color rgba="0.901961 0.901961 0.901961 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_hip_roll" type="revolute">
+    <origin xyz="0 0.0165 0.0125" rpy="-1.57079632679 -0 0" />
+    <parent link="yaw2roll" />
+    <child link="hip_l" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.383972435439" upper="0.383972435439" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="upper_leg_left">
+    <visual>
+      <origin xyz="-0 -0 -0.0425" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/upper_leg_left.stl" />
+      </geometry>
+      <material name="upper_leg_left_material">
+        <color rgba="0.866667 0.866667 0.866667 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.022 0.0357771 0.0125" rpy="-3.14159265359 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 -0 -0.0425" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/upper_leg_rigidity_plate.stl" />
+      </geometry>
+      <material name="upper_leg_rigidity_plate_material">
+        <color rgba="0.537255 0.854902 0.827451 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.022 0.0357771 -0.004" rpy="0 -0 3.14159265359" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 -0 0.0125" rpy="1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_hip_pitch" type="revolute">
+    <origin xyz="0.025 0 -0.0185" rpy="-1.57079632679 -0 -1.57079632679" />
+    <parent link="hip_l" />
+    <child link="upper_leg_left" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.5707963268" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="leg">
+    <visual>
+      <origin xyz="-0.022 0.0357771 0.0385" rpy="1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/leg.stl" />
+      </geometry>
+      <material name="leg_material">
+        <color rgba="0.811765 0.858824 0.898039 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0.042 -0.0115" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_knee" type="revolute">
+    <origin xyz="0.022 0.0357771 -0.004" rpy="3.14159265359 -0 1.57079632679" />
+    <parent link="upper_leg_left" />
+    <child link="leg" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.5707963268" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="ankle_left">
+    <visual>
+      <origin xyz="-0.022 0.00622291 -0.0647" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/sole_left.stl" />
+      </geometry>
+      <material name="sole_left_material">
+        <color rgba="0.537255 0.854902 0.827451 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.022 0.00622291 -0.0647" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/foot_left.stl" />
+      </geometry>
+      <material name="foot_left_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.0322" rpy="0 -0 3.14159265359" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration_default.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration_default_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.022 0.00622291 -0.0647" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/ankle_left.stl" />
+      </geometry>
+      <material name="ankle_left_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_ankle" type="revolute">
+    <origin xyz="0 0.042 -0.026" rpy="3.14159265359 -0 0" />
+    <parent link="leg" />
+    <child link="ankle_left" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="neck">
+    <visual>
+      <origin xyz="0.022 0.05 0.028" rpy="1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/neck.stl" />
+      </geometry>
+      <material name="neck_material">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.0145" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 -0.05 0.0145" rpy="1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.022 0.05 0.003" rpy="1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/neck.stl" />
+      </geometry>
+      <material name="neck_material">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="neck_pitch" type="revolute">
+    <origin xyz="0.026 0.0145 0.0324215" rpy="-1.57079632679 0 3.14159265359" />
+    <parent link="trunk_base" />
+    <child link="neck" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.0471975512" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="neck_pitch">
+    <visual>
+      <origin xyz="-0 0.0287931 -0.0145" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/neck_pitch.stl" />
+      </geometry>
+      <material name="neck_pitch_material">
+        <color rgba="0.34902 0.376471 0.4 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0.0207931 -0.0145" rpy="1.57079632679 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="head_pitch" type="revolute">
+    <origin xyz="0 -0.05 -0" rpy="3.14159265359 -0 0" />
+    <parent link="neck" />
+    <child link="neck_pitch" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="yaw_roll_motion">
+    <visual>
+      <origin xyz="0 0 0.01" rpy="0 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/yaw_roll_motion.stl" />
+      </geometry>
+      <material name="yaw_roll_motion_material">
+        <color rgba="0.768627 0.886275 0.952941 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.0145" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.016 0 0.0145" rpy="-0 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.018 0 0.0145" rpy="-0 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="head_yaw" type="revolute">
+    <origin xyz="-0 0.0186931 -0.0145" rpy="1.57079632679 -0 -3.14159265359" />
+    <parent link="neck_pitch" />
+    <child link="yaw_roll_motion" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.96705972839" upper="2.96705972839" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="jaw_soft">
+    <visual>
+      <origin xyz="0.0155 -9.13778e-05 -0.05548" rpy="-1.57079632679 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/lens.stl" />
+      </geometry>
+      <material name="lens_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0045 -9.13778e-05 -0.0178" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/face_part.stl" />
+      </geometry>
+      <material name="face_part_material">
+        <color rgba="0.34902 0.376471 0.4 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.003 0.0255 -0.018" rpy="0 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0046 0 -0.0179996" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/jaw_soft.stl" />
+      </geometry>
+      <material name="jaw_soft_material">
+        <color rgba="0.85098 0.756863 0.866667 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/motor_support.stl" />
+      </geometry>
+      <material name="motor_support_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0045 -0 -0.018" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/top_head_shell.stl" />
+      </geometry>
+      <material name="top_head_shell_material">
+        <color rgba="0.901961 0.901961 0.901961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.0145" rpy="-1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.0032 -0.04 -0.018" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration_default.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration_default_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.02694 0.0289936 -0.0519" rpy="0 0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/elec_rpi_robot_hat_pcb.stl" />
+      </geometry>
+      <material name="elec_rpi_robot_hat_pcb_material">
+        <color rgba="0.313725 0.486275 0.411765 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.00420071 1.7776e-08 -0.0180814" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/soft_mouth_top.stl" />
+      </geometry>
+      <material name="soft_mouth_top_material">
+        <color rgba="0.85098 0.756863 0.866667 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0045 -9.13778e-05 -0.0178" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/noenoeil.stl" />
+      </geometry>
+      <material name="noenoeil_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0043 -0 -0.018" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/bottom_head_shell.stl" />
+      </geometry>
+      <material name="bottom_head_shell_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.0155 -9.13778e-05 -0.05558" rpy="-1.57079632679 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/m12_lens_holder.stl" />
+      </geometry>
+      <material name="m12_lens_holder_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.015435 -1.13778e-05 -0.06001" rpy="-1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/pcb__raspberry_pi_zero_2_w.stl" />
+      </geometry>
+      <material name="pcb__raspberry_pi_zero_2_w_material">
+        <color rgba="0.498039 0.498039 0.498039 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.01 -0.016786 0.0260226" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/speaker.stl" />
+      </geometry>
+      <material name="speaker_material">
+        <color rgba="0.294118 0.290196 0.290196 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="head_roll" type="revolute">
+    <origin xyz="-0.0179 0 0.0145" rpy="-0 -1.57079632679 0" />
+    <parent link="yaw_roll_motion" />
+    <child link="jaw_soft" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.436332312999" upper="0.436332312999" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="head_camera_link" />
+  <joint name="jaw_soft_to_head_camera_link" type="fixed">
+    <origin xyz="0.0155 -9.13778e-05 -0.0733" rpy="0 1.57079632679 0" />
+    <parent link="jaw_soft" />
+    <child link="head_camera_link" />
+  </joint>
+  <link name="head_camera_optical_frame" />
+  <joint name="head_camera_link_to_head_camera_optical_frame" type="fixed">
+    <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679" />
+    <parent link="head_camera_link" />
+    <child link="head_camera_optical_frame" />
+  </joint>
+  <link name="mouth">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079632679 -0 1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/jaw.stl" />
+      </geometry>
+      <material name="jaw_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="mouth" type="revolute">
+    <origin xyz="-0.0045 0 -0.018" rpy="0 -0 0" />
+    <parent link="jaw_soft" />
+    <child link="mouth" />
+    <axis xyz="0 1 0" />
+    <limit lower="-0.55" upper="0" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="bearing_roll">
+    <visual>
+      <origin xyz="-0.0175 -0.002 0.0125" rpy="3.14159265359 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/yaw2roll.stl" />
+      </geometry>
+      <material name="yaw2roll_material">
+        <color rgba="0.647059 0.647059 0.647059 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0 0.0125" rpy="-3.14159265359 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0175 -0.002 0.0125" rpy="3.14159265359 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/bearing_roll.stl" />
+      </geometry>
+      <material name="bearing_roll_material">
+        <color rgba="0.262745 0.282353 0.301961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0.0165 0.0125" rpy="1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_hip_yaw" type="revolute">
+    <origin xyz="0.006 -0.0175 -0.005" rpy="3.14159265359 -0 1.57079632679" />
+    <parent link="trunk_base" />
+    <child link="bearing_roll" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.523598775598" upper="0.436332312999" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="hip_l_2">
+    <visual>
+      <origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 -0 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/hip_l.stl" />
+      </geometry>
+      <material name="hip_l_material">
+        <color rgba="0.901961 0.901961 0.901961 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.025 0 -0.0185" rpy="1.57079632679 -0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_hip_roll" type="revolute">
+    <origin xyz="-0 0.0165 0.0125" rpy="1.57079632679 0 3.14159265359" />
+    <parent link="bearing_roll" />
+    <child link="hip_l_2" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.383972435439" upper="0.383972435439" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="upper_leg_right">
+    <visual>
+      <origin xyz="-0.022 0.0357771 0.0125" rpy="-0 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.022 0.0357771 0" rpy="3.14159265359 -0 -0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration__22x16x4.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration__22x16x4_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.0435" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/upper_leg_rigidity_plate.stl" />
+      </geometry>
+      <material name="upper_leg_rigidity_plate_material">
+        <color rgba="0.537255 0.854902 0.827451 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0 -0.0425" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/upper_leg_right.stl" />
+      </geometry>
+      <material name="upper_leg_right_material">
+        <color rgba="0.866667 0.866667 0.866667 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.0125" rpy="1.57079632679 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_hip_pitch" type="revolute">
+    <origin xyz="0.025 0 -0.0185" rpy="-1.57079632679 -0 -1.57079632679" />
+    <parent link="hip_l_2" />
+    <child link="upper_leg_right" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="leg_2">
+    <visual>
+      <origin xyz="-0.042 0 -0.0115" rpy="-0 -1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/xl330.stl" />
+      </geometry>
+      <material name="xl330_material">
+        <color rgba="0.286275 0.286275 0.286275 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.0357771 -0.022 0.0385" rpy="0 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/leg.stl" />
+      </geometry>
+      <material name="leg_material">
+        <color rgba="0.811765 0.858824 0.898039 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_knee" type="revolute">
+    <origin xyz="-0.022 0.0357771 -0.004" rpy="3.14159265359 -0 -0" />
+    <parent link="upper_leg_right" />
+    <child link="leg_2" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+  <link name="ankle_right">
+    <visual>
+      <origin xyz="0.022 0.00622291 -0.0647" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/ankle_right.stl" />
+      </geometry>
+      <material name="ankle_right_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.022 0.00622291 -0.0647" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/sole_right.stl" />
+      </geometry>
+      <material name="sole_right_material">
+        <color rgba="0.537255 0.854902 0.827451 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0 0 -0.0292" rpy="3.14159265359 -0 -0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/seeed_bearing__configuration_default.stl" />
+      </geometry>
+      <material name="seeed_bearing__configuration_default_material">
+        <color rgba="0.713725 0.760784 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.022 0.00622291 -0.0647" rpy="-1.57079632679 1.57079632679 0" />
+      <geometry>
+        <mesh filename="package://microduck/assets/foot_right.stl" />
+      </geometry>
+      <material name="foot_right_material">
+        <color rgba="0.980392 0.713725 0.00392157 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_ankle" type="revolute">
+    <origin xyz="-0.042 0 -0.026" rpy="-3.14159265359 -0 1.57079632679" />
+    <parent link="leg_2" />
+    <child link="ankle_right" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="1.0" velocity="12.0" />
+  </joint>
+</robot>

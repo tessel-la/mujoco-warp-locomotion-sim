@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mujoco-warp-locomotion-sim"
+version = "0.1.0"
+description = "MuJoCo Warp biped locomotion simulation with a Robo Boy ROS 2 bridge"
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = { text = "MIT" }
+authors = [{ name = "Tessella" }]
+dependencies = [
+  "fastapi>=0.116,<1",
+  "numpy>=1.26,<3",
+  "onnxruntime>=1.23,<2",
+  "pillow>=11,<13",
+  "tomli>=2,<3; python_version < '3.11'",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+# MJWarp's 3.9.0.1 lockfile uses Warp 1.13.0. Its broad upstream
+# `warp-lang>=1.13` metadata also resolves to newer, incompatible codegen.
+mjwarp = ["mujoco-warp==3.9.0.1", "warp-lang==1.13.0"]
+dev = ["httpx>=0.28,<1", "pytest>=8,<10", "ruff>=0.12,<1"]
+
+[project.scripts]
+mujoco-warp-locomotion-sim = "mujoco_warp_locomotion_sim.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["training/microduck_rl"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

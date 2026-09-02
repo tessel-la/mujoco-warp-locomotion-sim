@@ -1,0 +1,77 @@
+services:
+  mujoco_warp_locomotion_sim:
+    build:
+      context: .
+    image: mujoco-warp-locomotion-sim:local
+    container_name: mujoco_warp_locomotion_sim
+    runtime: nvidia
+    network_mode: host
+    ipc: host
+    shm_size: "2gb"
+    environment:
+      MUJOCO_GL: "${MUJOCO_GL:-egl}"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,graphics,utility"
+    command:
+      - mujoco-warp-locomotion-sim
+      - serve
+      - --config
+      - /app/config/default.toml
+      - --device
+      - "${MJWARP_DEVICE:-cuda:0}"
+      - --host
+      - 0.0.0.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./config:/app/config:ro
+      - ./assets:/app/assets:ro
+      - ./policies:/app/policies:ro
+    restart: unless-stopped
+
+  mujoco_warp_ros_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.ros
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+    image: mujoco-warp-locomotion-ros:local
+    container_name: mujoco_warp_locomotion_ros
+    network_mode: host
+    ipc: host
+    depends_on:
+      mujoco_warp_locomotion_sim:
+        condition: service_healthy
+    environment:
+      ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: ${ROS_LOCALHOST_ONLY:-0}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE:-SUBNET}
+      ROS_STATIC_PEERS: ${ROS_STATIC_PEERS:-}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      FASTDDS_BUILTIN_TRANSPORTS: ${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
+      CYCLONEDDS_URI: ${CYCLONEDDS_URI:-file:///etc/cyclonedds/config.xml}
+      MJWARP_SIM_URL: http://127.0.0.1:8010
+      MJWARP_ROBOT_URDF: /app/assets/microduck/microduck.urdf
+      MJWARP_MESH_ROOT: /app/assets
+      MJWARP_MESH_PORT: "8000"
+      MJWARP_CMD_TOPIC: /cmd_vel
+      MJWARP_ODOM_TOPIC: /odom
+      MJWARP_IMU_TOPIC: /imu/data
+      MJWARP_CAMERA_TOPIC: /locomotion/camera/image_raw
+      MJWARP_CAMERA_FRAME: head_camera_optical_frame
+      MJWARP_CAMERA_FOV: "72"
+      MJWARP_CMD_TIMEOUT: "0.5"
+    volumes:
+      - ./assets:/app/assets:ro
+      - ${CYCLONEDDS_CONFIG_PATH:-./config/cyclonedds/default.xml}:/etc/cyclonedds/config.xml:ro
+      - microduck-interfaces:/overlay_export
+    restart: unless-stopped
+
+volumes:
+  microduck-interfaces:
+    name: microduck-interfaces

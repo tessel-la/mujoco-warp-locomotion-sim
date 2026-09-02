@@ -1,0 +1,10 @@
+# RL modes: walk, stand, sit, ground_pick, kick_left, kick_right, roulade, recover.
+# Simulator primitive: jump (not an RL policy).
+string motion
+---
+bool success
+string message
+string final_mode
+---
+string phase
+string active_mode

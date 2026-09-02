@@ -1,0 +1,16 @@
+services:
+  mujoco_warp_locomotion_sim:
+    runtime: runc
+    command:
+      - mujoco-warp-locomotion-sim
+      - serve
+      - --config
+      - /app/config/default.toml
+      - --backend
+      - mock
+      - --host
+      - 0.0.0.0
+    deploy:
+      resources:
+        reservations:
+          devices: !reset []

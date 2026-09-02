@@ -1,0 +1,67 @@
+[server]
+host = "0.0.0.0"
+port = 8010
+cors_origins = ["http://localhost:3000", "http://localhost:5173"]
+
+[simulation]
+backend = "mujoco_warp"
+device = "cuda:0"
+model = "../assets/microduck/scene.xml"
+urdf = "../assets/microduck/microduck.urdf"
+dt = 0.005
+realtime = true
+state_hz = 50.0
+render_hz = 15.0
+command_timeout = 0.5
+nconmax = 256
+njmax = 1024
+
+[robot]
+name = "microduck"
+base_body = "trunk_base"
+camera = "head_camera"
+keyframe = "STAND"
+joint_names = [
+  "left_hip_yaw", "left_hip_roll", "left_hip_pitch", "left_knee",
+  "left_ankle", "neck_pitch", "head_pitch", "head_yaw", "head_roll",
+  "right_hip_yaw", "right_hip_roll", "right_hip_pitch", "right_knee",
+  "right_ankle",
+]
+
+[control]
+control_hz = 50.0
+max_linear_x = 0.45
+max_linear_y = 0.20
+max_angular_z = 1.2
+gait_frequency = 1.8
+hip_swing = 0.34
+knee_lift = 0.42
+ankle_swing = 0.22
+velocity_assist = 12.0
+yaw_assist = 0.7
+standing_height = 0.12
+height_assist = 65.0
+height_damping = 5.0
+posture_assist = 0.9
+posture_damping = 0.12
+
+[policy]
+enabled = true
+directory = "../policies"
+walking = "BEST_alpha_walking.onnx"
+standing = "BEST_alpha_stand.onnx"
+sitstand = "BEST_alpha_sitstand.onnx"
+ground_pick = "alpha_ground_pick.onnx"
+kick_left = "ball_kick_left.onnx"
+kick_right = "ball_kick_right.onnx"
+roulade = "roulade.onnx"
+action_scale = 1.0
+automatic_recovery = true
+
+[camera]
+topic = "/locomotion/camera/image_raw"
+frame = "head_camera_optical_frame"
+width = 640
+height = 480
+fov = 72.0
+jpeg_quality = 88
