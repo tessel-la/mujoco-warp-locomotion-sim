@@ -66,6 +66,9 @@ docker compose --env-file ../robo-boy/.env \
   -f docker-compose.yml -f docker-compose.cpu.yml up --build
 ```
 
+Use this CPU profile on AMD hosts. Warp has no ROCm/HIP backend, so MuJoCo Warp
+runs the simulation on the CPU while keeping the renderer headless.
+
 For a fast end-to-end integration check that installs no MuJoCo/CUDA runtime:
 
 ```bash
@@ -80,6 +83,31 @@ stream at:
 ```text
 http://localhost:8010/video_stream/stream?topic=/locomotion/camera/image_raw&type=mjpeg
 ```
+
+### Graphical interface
+
+The simulator runs headless. Use Robo Boy for the graphical interface after
+starting the simulator above:
+
+```bash
+cd ../robo-boy
+ROBOBOY_PANEL_SOURCES_FILE=../robo-boy-microduck-control-panel/examples/panel-sources.json \
+  docker compose --env-file .env \
+  -f docker-compose.yml \
+  -f infra/compose/panels.yml \
+  -f ../robo-boy-microduck-control-panel/examples/docker-compose.panel.yml \
+  up --build
+```
+
+Open <https://localhost>, choose **Quick Connect**, then add:
+
+- **Microduck Control** to drive the robot and select policies;
+- **Camera** with `/locomotion/camera/image_raw` for the head camera;
+- **3D Visualization** with fixed frame `odom` for the full robot view.
+
+Start the simulator first because its ROS sidecar creates the
+`microduck-interfaces` volume mounted by Robo Boy. The direct MJPEG URL above is
+the lightest option when only the camera view is needed.
 
 ## Drive it
 
