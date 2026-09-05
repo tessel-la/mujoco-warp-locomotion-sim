@@ -68,7 +68,7 @@ on the CPU; there is no ROCm profile for MuJoCo Warp.
 MuJoCo Warp does not support ROCm/HIP. On AMD, use the CPU command above. The
 Robo Boy GUI and ROS interfaces are unchanged.
 
-### Robo Boy GUI
+### Robo Boy base stack
 
 Start Robo Boy with the same environment in its own directory:
 
@@ -96,7 +96,7 @@ stream at:
 http://localhost:8010/video_stream/stream?topic=/locomotion/camera/image_raw&type=mjpeg
 ```
 
-### Graphical interface
+### Robo Boy graphical panels
 
 The simulator runs headless. Use Robo Boy for the graphical interface after
 starting the simulator above:
