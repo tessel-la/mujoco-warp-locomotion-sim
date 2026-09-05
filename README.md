@@ -39,35 +39,47 @@ visualization-only URDF derived from that exact MJCF hierarchy and mesh set.
 
 ## Start with Robo Boy
 
-The primary stack needs an NVIDIA driver and NVIDIA Container Toolkit:
+Choose one simulator profile below. The profiles are mutually exclusive; do
+not combine the CUDA and CPU overrides.
+
+### NVIDIA CUDA
+
+The default profile requires an NVIDIA driver and NVIDIA Container Toolkit and
+selects `cuda:0`:
 
 ```bash
 docker compose --env-file ../robo-boy/.env up --build
 ```
 
-The checked-in defaults select `cuda:0`. Copy `.env.example` to `.env` only
-when you want local overrides, then pass it after the shared file with a second
-`--env-file .env` argument.
+### CPU
 
-Start Robo Boy with the same environment in its own directory:
-
-```bash
-docker compose up --build
-```
-
-Connect Robo Boy to the host/domain. Its resource discovery will find the
-camera, URDF, odometry, TF, diagnostics, and command topics. The default fixed
-frame `odom` already matches this simulator.
-
-For CPU MJWarp development:
+Use this profile for CPU-only machines and AMD hosts:
 
 ```bash
 docker compose --env-file ../robo-boy/.env \
   -f docker-compose.yml -f docker-compose.cpu.yml up --build
 ```
 
-Use this CPU profile on AMD hosts. Warp has no ROCm/HIP backend, so MuJoCo Warp
-runs the simulation on the CPU while keeping the renderer headless.
+MuJoCo Warp has no ROCm/HIP backend. AMD systems therefore run this simulator
+on the CPU; there is no ROCm profile for MuJoCo Warp.
+
+### AMD ROCm
+
+MuJoCo Warp does not support ROCm/HIP. On AMD, use the CPU command above. The
+Robo Boy GUI and ROS interfaces are unchanged.
+
+### Robo Boy GUI
+
+Start Robo Boy with the same environment in its own directory:
+
+```bash
+cd ../robo-boy
+docker compose up --build
+```
+
+Connect Robo Boy to the host/domain. Its resource discovery will find the
+camera, URDF, odometry, TF, diagnostics, and command topics. The default fixed
+frame `odom` already matches this simulator.
 
 For a fast end-to-end integration check that installs no MuJoCo/CUDA runtime:
 
