@@ -15,6 +15,18 @@ from tools.export_microduck_urdf import _rpy, export
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_show_viewer_defaults_to_headless_and_can_be_overridden() -> None:
+    settings = load_settings(ROOT / "config/default.toml")
+    assert settings.simulation.show_viewer is False
+
+    with_viewer = settings.with_overrides(show_viewer=True)
+    assert with_viewer.simulation.show_viewer is True
+
+    # Omitting show_viewer preserves whatever the setting already was, the same
+    # None-means-unchanged contract backend/device already follow.
+    assert with_viewer.with_overrides().simulation.show_viewer is True
+
+
 def test_fall_orientation_allows_an_upright_low_sit() -> None:
     assert MujocoWarpBackend._projected_gravity_z((1.0, 0.0, 0.0, 0.0)) == pytest.approx(
         -1.0

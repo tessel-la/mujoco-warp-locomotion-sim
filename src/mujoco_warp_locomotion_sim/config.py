@@ -31,6 +31,7 @@ class SimulationSettings:
     command_timeout: float
     nconmax: int
     njmax: int
+    show_viewer: bool = False
 
 
 @dataclass(frozen=True)
@@ -107,13 +108,22 @@ class Settings:
     policy: PolicySettings
     camera: CameraSettings
 
-    def with_overrides(self, *, backend: str | None = None, device: str | None = None) -> Settings:
+    def with_overrides(
+        self,
+        *,
+        backend: str | None = None,
+        device: str | None = None,
+        show_viewer: bool | None = None,
+    ) -> Settings:
         return replace(
             self,
             simulation=replace(
                 self.simulation,
                 backend=backend or self.simulation.backend,
                 device=device or self.simulation.device,
+                show_viewer=(
+                    self.simulation.show_viewer if show_viewer is None else show_viewer
+                ),
             ),
         )
 

@@ -98,8 +98,8 @@ http://localhost:8010/video_stream/stream?topic=/locomotion/camera/image_raw&typ
 
 ### Robo Boy graphical panels
 
-The simulator runs headless. Use Robo Boy for the graphical interface after
-starting the simulator above:
+The simulator runs headless by default. Use Robo Boy for the graphical
+interface after starting the simulator above:
 
 ```bash
 cd ../robo-boy
@@ -120,6 +120,16 @@ Open <https://localhost>, choose **Quick Connect**, then add:
 Start the simulator first because its ROS sidecar creates the
 `microduck-interfaces` volume mounted by Robo Boy. The direct MJPEG URL above is
 the lightest option when only the camera view is needed.
+
+### Native interactive viewer
+
+For local physics debugging on the machine actually running the simulator --
+distinct from Robo Boy's panels above, which work over the network and need no
+display on that machine -- start with `--viewer` or set `MJWARP_SHOW_VIEWER=1`
+to open MuJoCo's own `mujoco.viewer` window (needs a display and, in Docker,
+`docker-compose.gui.yml`: it mounts the host's X11 socket and forwards
+`DISPLAY`). Same mechanism `genesis-manipulator-sim` uses for its `--viewer`,
+and what the Tessella Dashboard's headless/GUI toggle switches for this card.
 
 ## Drive it
 
