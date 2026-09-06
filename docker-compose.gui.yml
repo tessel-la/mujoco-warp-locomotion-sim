@@ -1,0 +1,12 @@
+# GUI display mode: shows MuJoCo's interactive viewer on the host's X display instead of running
+# headless. A runtime toggle, not a host property -- see docker-compose.cpu.yml for that axis
+# instead. Uses MJWARP_SHOW_VIEWER rather than restating `command:`, because `command:` is fully
+# replaced (not merged) per Compose file, and this overlay must combine with the CPU override (or
+# no override, on CUDA) without fighting over --device.
+services:
+  mujoco_warp_locomotion_sim:
+    environment:
+      MJWARP_SHOW_VIEWER: "1"
+      DISPLAY: ${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw

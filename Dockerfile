@@ -13,6 +13,15 @@ RUN apt-get update \
         libgomp1 \
         libosmesa6 \
         libxrender1 \
+        # GLFW/X11 client libs for mujoco.viewer's interactive window (GUI display mode).
+        # Everything above is offscreen EGL/OSMesa rendering only and cannot open a window.
+        libglfw3 \
+        libx11-6 \
+        libxrandr2 \
+        libxinerama1 \
+        libxcursor1 \
+        libxi6 \
+        libxxf86vm1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

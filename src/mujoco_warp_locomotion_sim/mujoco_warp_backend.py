@@ -55,6 +55,7 @@ class MujocoWarpBackend:
         self._data: Any = None
         self._host_data: Any = None
         self._renderer: Any = None
+        self._viewer: Any = None
         self._graph: Any = None
         self._body_id = -1
         self._joint_qpos: list[int] = []
@@ -111,6 +112,12 @@ class MujocoWarpBackend:
             height=self.settings.camera.height,
             width=self.settings.camera.width,
         )
+        if self.settings.simulation.show_viewer:
+            import mujoco.viewer
+
+            self._viewer = mujoco.viewer.launch_passive(
+                self._model, self._host_data, show_left_ui=False, show_right_ui=False
+            )
         self.reset()
 
     def _name_id(self, object_type: Any, name: str) -> int:
@@ -259,6 +266,8 @@ class MujocoWarpBackend:
             self._wp.capture_launch(self._graph)
         self._wp.synchronize()
         self._mjw.get_data_into(self._host_data, self._model, self._data)
+        if self._viewer is not None:
+            self._viewer.sync()
         if self._policy is not None and policy_tick and self._policy.after_step(self._host_data):
             self.reset()
 
@@ -416,3 +425,5 @@ class MujocoWarpBackend:
     def close(self) -> None:
         if self._renderer is not None:
             self._renderer.close()
+        if self._viewer is not None:
+            self._viewer.close()

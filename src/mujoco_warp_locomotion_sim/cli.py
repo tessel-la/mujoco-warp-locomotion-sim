@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 
@@ -19,6 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--config")
     serve.add_argument("--backend", choices=("mujoco_warp", "mock"))
     serve.add_argument("--device")
+    serve.add_argument("--viewer", action="store_true", help="show the interactive MuJoCo viewer")
     serve.add_argument("--host")
     serve.add_argument("--port", type=int)
     doctor = subparsers.add_parser("doctor", help="initialize and step a backend")
@@ -30,13 +32,29 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _parser().parse_args()
-    settings = load_settings(args.config).with_overrides(backend=args.backend, device=args.device)
+    # MJWARP_SHOW_VIEWER lets a Compose overlay flip this on without restating `command:`, which
+    # would fight with whichever device override is also active.
+    show_viewer = getattr(args, "viewer", False) or os.environ.get("MJWARP_SHOW_VIEWER") == "1"
+    settings = load_settings(args.config).with_overrides(
+        backend=args.backend,
+        device=args.device,
+        show_viewer=True if show_viewer else None,
+    )
     if args.command == "serve":
         uvicorn.run(
             create_app(settings),
             host=args.host or settings.server.host,
             port=args.port or settings.server.port,
         )
+        if settings.simulation.show_viewer:
+            # Verified by direct reproduction: closing mujoco.viewer's GLFW window and the
+            # offscreen EGL Renderer cleanly (already done by SimulationRuntime.stop() above,
+            # via the FastAPI lifespan) still segfaults during CPython's own native-library
+            # teardown afterward. Headless shutdown -- no GLFW context ever created -- exits 0.
+            # os._exit skips that teardown instead of fixing it upstream.
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(0)
         return
 
     runtime = SimulationRuntime(settings)
