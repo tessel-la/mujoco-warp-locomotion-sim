@@ -58,6 +58,24 @@ roulade = "roulade.onnx"
 action_scale = 1.0
 automatic_recovery = true
 
+[motion]
+# Closed-loop relative-move defaults. Speeds stay well inside the [control] limits so
+# the walking policy tracks them accurately; a goal may ask for less but never more.
+max_linear_speed = 0.20
+max_angular_speed = 0.60
+min_linear_speed = 0.06
+min_angular_speed = 0.25
+linear_gain = 1.2
+angular_gain = 1.5
+# A move stops as soon as it is inside these bands, so the tolerance is also the
+# accuracy you get: ask for a tighter one when a goal needs it. The result always
+# reports the distance actually traveled and the error it finished with.
+position_tolerance = 0.03
+yaw_tolerance = 0.05
+settle_time = 0.6
+move_timeout = 30.0
+policy_timeout = 15.0
+
 [camera]
 topic = "/locomotion/camera/image_raw"
 frame = "head_camera_optical_frame"

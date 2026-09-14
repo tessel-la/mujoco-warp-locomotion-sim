@@ -6,7 +6,25 @@ from typing import Any
 
 from PIL import Image, ImageDraw
 
+from .backend import JumpEpisode
 from .config import Settings
+from .policy_controller import MODE_KINDS
+
+# Trunk height above which the mock robot counts as off the ground.
+MOCK_GROUND_HEIGHT = 0.6201
+
+# How long each mode occupies the mock controller. The one-shot durations match the
+# real policies; `sit`/`stand` get the same settle window the RL sit/stand transition
+# is given, so an action waiting on either backend sees the same lifecycle.
+POLICY_DURATIONS = {
+    "ground_pick": 2.8,
+    "kick_left": 0.5,
+    "kick_right": 0.5,
+    "roulade": 3.0,
+    "recover": 1.0,
+    "sit": 1.5,
+    "stand": 1.5,
+}
 
 
 class MockBackend:
@@ -20,6 +38,11 @@ class MockBackend:
         self.enabled = True
         self.policy_mode = "walk"
         self._policy_time_remaining = 0.0
+        self._policy_episode = 0
+        self._policy_request = "walk"
+        self._policy_kind = MODE_KINDS["walk"]
+        self._policy_phase = "complete"
+        self._jump = JumpEpisode()
         self.command = [0.0, 0.0, 0.0]
         self.sim_time = 0.0
         self.pose = [0.0, 0.0, 0.62]
@@ -43,29 +66,42 @@ class MockBackend:
         self.enabled = enabled
         if not enabled:
             self.command = [0.0, 0.0, 0.0]
+            self._jump.abandon()
 
     def set_policy(self, mode: str) -> str:
+        if mode not in MODE_KINDS:
+            raise ValueError(f"unknown policy mode {mode!r}")
         self.policy_mode = mode
-        self._policy_time_remaining = {
-            "ground_pick": 2.8,
-            "kick_left": 0.5,
-            "kick_right": 0.5,
-            "roulade": 3.0,
-            "recover": 1.0,
-        }.get(mode, 0.0)
+        self._policy_time_remaining = POLICY_DURATIONS.get(mode, 0.0)
+        self._policy_episode += 1
+        self._policy_request = mode
+        self._policy_kind = MODE_KINDS[mode]
+        self._policy_phase = "running" if self._policy_time_remaining > 0.0 else "complete"
         return self.policy_mode
 
     def set_mouth(self, opened: bool) -> None:
         self.mouth_open = opened
 
     def jump(self) -> None:
-        if self.enabled and self.pose[2] <= 0.6201:
+        if not self.enabled:
+            return
+        self._jump.request()
+        if self.pose[2] <= MOCK_GROUND_HEIGHT:
             self.vertical_velocity = 1.35
+        else:
+            self._jump.refuse()
 
     def reset(self) -> None:
         enabled = self.enabled
+        # Episode counters stay monotonic across a reset so a new episode is never
+        # mistaken for the old one; a reset abandons whatever was still running.
+        policy_episode = self._policy_episode
+        jump_episode = self._jump
+        jump_episode.abandon()
         self.__init__(self.settings)
         self.enabled = enabled
+        self._policy_episode = policy_episode
+        self._jump = jump_episode
 
     def step(self) -> None:
         dt = self.settings.simulation.dt
@@ -96,10 +132,14 @@ class MockBackend:
         else:
             self.velocities = [0.0] * len(self.positions)
         self.sim_time += dt
+        self._jump.observe(self.pose[2] > MOCK_GROUND_HEIGHT)
         if self._policy_time_remaining > 0.0:
             self._policy_time_remaining -= dt
             if self._policy_time_remaining <= 0.0:
-                self.policy_mode = "walk"
+                self._policy_time_remaining = 0.0
+                self._policy_phase = "complete"
+                if self._policy_kind == "oneshot":
+                    self.policy_mode = "walk"
 
     def _gait_positions(self, activity: float) -> list[float]:
         vx, vy, wz = self.command if self.enabled else (0.0, 0.0, 0.0)
@@ -124,6 +164,12 @@ class MockBackend:
                 values.extend([-0.05 * vx, 0.25 * wz])
         return values
 
+    def _policy_progress(self) -> float:
+        if self._policy_phase != "running":
+            return 1.0
+        duration = POLICY_DURATIONS[self._policy_request]
+        return min(1.0, max(0.0, 1.0 - self._policy_time_remaining / duration))
+
     def state(self) -> dict[str, Any]:
         vx, vy, wz = self.command if self.enabled else (0.0, 0.0, 0.0)
         half = self.yaw / 2.0
@@ -134,7 +180,7 @@ class MockBackend:
             "simulation_time": self.sim_time,
             "enabled": self.enabled,
             "mode": "jumping"
-            if self.pose[2] > 0.6201
+            if self.pose[2] > MOCK_GROUND_HEIGHT
             else "walking"
             if max(abs(vx), abs(vy), abs(wz)) > 1e-4
             else "standing",
@@ -144,6 +190,7 @@ class MockBackend:
             "joint_positions": [*self.positions, self.mouth_position],
             "joint_velocities": [*self.velocities, 0.0],
             "mouth": {"opened": self.mouth_open, "position": self.mouth_position},
+            "jump": self._jump.status(),
             "base_pose": {"position": self.pose.copy(), "quaternion_wxyz": quaternion},
             "base_twist": {
                 "linear": [vx, vy, 0.0],
@@ -173,6 +220,11 @@ class MockBackend:
                 "observation_size": 61,
                 "action_size": 14,
                 "recovery": None,
+                "episode": self._policy_episode,
+                "request": self._policy_request,
+                "kind": self._policy_kind,
+                "phase": self._policy_phase,
+                "progress": self._policy_progress(),
             },
         }
 

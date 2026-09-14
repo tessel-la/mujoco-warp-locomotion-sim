@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "tree": {
+    "id": "microduck-policy-then-move",
+    "name": "Microduck: kick, then walk on",
+    "description": "Triggers a trained control policy and waits for the policy's own completion condition before the next goal starts. The kick node stays Running for the whole kick and hands over only once the controller has returned to walking.",
+    "createdAt": 0,
+    "updatedAt": 0,
+    "nodes": [
+      { "id": "sequence", "type": "sequence", "position": { "x": 80, "y": 170 }, "data": { "label": "Kick then advance", "type": "sequence" } },
+      { "id": "stand", "type": "action", "position": { "x": 400, "y": 50 }, "data": { "label": "Stand", "actionName": "/locomotion/execute_motion", "actionType": "microduck_interfaces/action/ExecuteMotion", "parameters": { "motion": "stand", "timeout": 10.0 }, "timeout": 15000 } },
+      { "id": "kick", "type": "action", "position": { "x": 400, "y": 170 }, "data": { "label": "Kick left", "actionName": "/locomotion/execute_motion", "actionType": "microduck_interfaces/action/ExecuteMotion", "parameters": { "motion": "kick_left", "timeout": 10.0 }, "timeout": 15000 } },
+      { "id": "advance", "type": "action", "position": { "x": 400, "y": 290 }, "data": { "label": "Advance 0.3 m", "actionName": "/locomotion/move_relative", "actionType": "microduck_interfaces/action/MoveRelative", "parameters": { "x": 0.3, "y": 0.0, "yaw": 0.0, "max_linear_speed": 0.0, "max_angular_speed": 0.0, "position_tolerance": 0.0, "yaw_tolerance": 0.0, "timeout": 20.0 }, "timeout": 25000 } }
+    ],
+    "edges": [
+      { "id": "sequence-stand", "source": "sequence", "target": "stand" },
+      { "id": "sequence-kick", "source": "sequence", "target": "kick" },
+      { "id": "sequence-advance", "source": "sequence", "target": "advance" }
+    ]
+  }
+}

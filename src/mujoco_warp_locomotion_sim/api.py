@@ -12,10 +12,18 @@ from typing import Annotated, Any, Literal
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .config import Settings
+from .motion import JUMP, POLICY, RELATIVE_MOVE, MotionSpec
+from .policy_controller import MODE_KINDS
 from .runtime import SimulationRuntime
+
+# The controller owns the list of modes it can run; this only exposes it.
+POLICY_MODES = tuple(MODE_KINDS)
+# `jump` is a simulator primitive rather than a trained policy, so it is only
+# reachable as a motion, never as a policy mode.
+MOTION_NAMES = (*POLICY_MODES, JUMP)
 
 
 class VelocityCommand(BaseModel):
@@ -40,16 +48,61 @@ class MouthRequest(BaseModel):
 
 
 class PolicyRequest(BaseModel):
-    mode: Literal[
-        "walk",
-        "stand",
-        "sit",
-        "ground_pick",
-        "kick_left",
-        "kick_right",
-        "roulade",
-        "recover",
-    ]
+    mode: Literal[POLICY_MODES]  # type: ignore[valid-type]
+
+
+class RelativeMoveRequest(BaseModel):
+    """Drive to a pose offset in the base frame. Zero means "use the default"."""
+
+    kind: Literal["relative_move"] = "relative_move"
+    x: float = 0.0
+    y: float = 0.0
+    yaw: float = 0.0
+    max_linear_speed: float = 0.0
+    max_angular_speed: float = 0.0
+    position_tolerance: float = 0.0
+    yaw_tolerance: float = 0.0
+    timeout: float = 0.0
+
+    @field_validator("x", "y", "yaw")
+    @classmethod
+    def finite_offset(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("offsets must be finite")
+        return value
+
+    @field_validator(
+        "max_linear_speed",
+        "max_angular_speed",
+        "position_tolerance",
+        "yaw_tolerance",
+        "timeout",
+    )
+    @classmethod
+    def finite_and_not_negative(cls, value: float) -> float:
+        if not math.isfinite(value) or value < 0.0:
+            raise ValueError("limits must be finite and not negative")
+        return value
+
+
+class PolicyMotionRequest(BaseModel):
+    """Run one control policy, or the simulator jump, to its completion condition."""
+
+    kind: Literal["policy"]
+    motion: Literal[MOTION_NAMES]  # type: ignore[valid-type]
+    timeout: float = 0.0
+
+    @field_validator("timeout")
+    @classmethod
+    def finite_and_not_negative(cls, value: float) -> float:
+        if not math.isfinite(value) or value < 0.0:
+            raise ValueError("timeout must be finite and not negative")
+        return value
+
+
+MotionRequest = Annotated[
+    RelativeMoveRequest | PolicyMotionRequest, Field(discriminator="kind")
+]
 
 
 def create_app(settings: Settings, runtime: SimulationRuntime | None = None) -> FastAPI:
@@ -101,6 +154,7 @@ def create_app(settings: Settings, runtime: SimulationRuntime | None = None) -> 
             "odometry_topic": "/odom",
             "policy_command_topic": "/locomotion/policy_cmd",
             "motion_action": "/locomotion/execute_motion",
+            "move_relative_action": "/locomotion/move_relative",
             "mouth_service": "/locomotion/mouth",
             "jump_service": "/locomotion/jump",
             "policy_enabled": settings.policy.enabled,
@@ -158,6 +212,29 @@ def create_app(settings: Settings, runtime: SimulationRuntime | None = None) -> 
             raise HTTPException(503, simulation.startup_error or "simulation is starting")
         simulation.request_jump()
         return {"accepted": True}
+
+    @app.post("/api/v1/motion", status_code=202)
+    async def start_motion(payload: MotionRequest) -> dict[str, Any]:
+        """Take the motion slot, preempting whatever holds it.
+
+        The robot can only do one thing at a time, so there is a single slot and a
+        single monotonically increasing id. A caller that started id N and later reads
+        a different id knows it was preempted rather than having to guess.
+        """
+        if not simulation.ready:
+            raise HTTPException(503, simulation.startup_error or "simulation is starting")
+        fields = payload.model_dump()
+        fields["kind"] = RELATIVE_MOVE if fields["kind"] == "relative_move" else POLICY
+        return {"accepted": True, "motion": simulation.start_motion(MotionSpec(**fields))}
+
+    @app.get("/api/v1/motion")
+    async def motion_status() -> dict[str, Any]:
+        return simulation.motion_status()
+
+    @app.post("/api/v1/motion/{motion_id}/cancel")
+    async def cancel_motion(motion_id: int) -> dict[str, Any]:
+        canceled = simulation.cancel_motion(motion_id)
+        return {"canceled": canceled, "motion": simulation.motion_status()}
 
     @app.get("/api/v1/camera/frame.jpg")
     async def camera_frame() -> Response:

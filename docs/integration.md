@@ -59,12 +59,62 @@ posture assistance is applied while RL is enabled.
 Set `[policy].enabled = false` in the TOML configuration only when the simple
 reference controller is useful for diagnostics.
 
-For Behavior Trees, prefer the `/locomotion/execute_motion`
-`microduck_interfaces/action/ExecuteMotion` action. Set its `motion` goal to
-any policy name above. The same action accepts `jump`, but reports it as a
-simulator primitive because no jump ONNX policy is present in the official
-bundle. The action waits for one-shot motions to finish before succeeding, so
-it composes cleanly in Sequence nodes.
+## Actions, and what stays a service
+
+The split is by duration, not by importance. Anything instantaneous stays a service or
+a topic; anything that occupies the robot for a while is an action, so Robo Boy's
+Behavior Tree executor can hold a node Running for exactly that long.
+
+| Interface | Kind | Why |
+| --- | --- | --- |
+| `/locomotion/reset`, `/locomotion/enable` | service | instantaneous state writes |
+| `/locomotion/mouth`, `/mouth/open`, `/mouth/close` | service | a servo settling in about 0.1 s, with no policy behind it |
+| `/locomotion/policy_cmd` | topic | fire-and-forget mode select for the teleoperation panel |
+| `/locomotion/jump` | service | kept for the panel; the action form is `ExecuteMotion` with `motion: jump` |
+| `/locomotion/execute_motion` | action | a control policy running to its own completion condition |
+| `/locomotion/move_relative` | action | a closed-loop walk to a requested offset |
+
+### `MoveRelative`
+
+`x` (forward), `y` (left), and `yaw` (counter-clockwise) are a pose offset in the base
+frame as it stood when the goal was accepted. The robot is holonomic on the ground, so
+"forward 0.5 m", "sidestep 0.2 m", "turn 90 degrees", and "go to a relative X/Y facing
+a new heading" are all this one goal with the unused fields left at zero. There is no
+vertical axis: it is a biped walking on the floor.
+
+The move drives the trained walking policy through the ordinary velocity path, closing
+the loop on odometry at 50 Hz, and switches the controller to `walk` first when some
+other policy holds it. `max_linear_speed`, `max_angular_speed`, `position_tolerance`,
+`yaw_tolerance`, and `timeout` default to the `[motion]` configuration when left at
+zero, and may lower the configured limits but never raise them. The move stops as soon
+as it is inside the tolerance bands, so the tolerance is also the accuracy: ask for a
+tighter one when a goal needs it. Feedback carries the phase, progress, distance
+traveled, distance remaining, heading remaining, and the active controller; the result
+carries what was actually achieved rather than claiming the offset was hit exactly.
+
+### `ExecuteMotion`
+
+Set `motion` to any policy name above, or to `jump`, which the action reports as a
+simulator primitive because the official bundle contains no jump ONNX policy. The goal
+finishes when the requested mode reaches its own completion condition, which differs by
+mode: `walk` is the controller's resting state and is done once it is active; `sit` and
+`stand` are done once the posture has settled; the one-shot motions are done when the
+policy hands control back to walking. A motion that knocked the robot over and needed
+automatic recovery reports failure rather than success.
+
+### Outcomes and preemption
+
+A ROS action has no distinct terminal state for a timeout, so both actions carry an
+`outcome` string — `succeeded`, `timeout`, `canceled`, `preempted`, or `failed` —
+alongside the usual succeeded/canceled/aborted goal state. Cancelling a goal from a
+Behavior Tree (a Timeout node, or stopping the tree) cancels the motion in the
+simulator rather than leaving it running.
+
+The simulator holds one motion slot, because the robot can only do one thing at a time.
+A newer motion, a direct policy change, or a non-zero operator `/cmd_vel` preempts the
+motion holding it; disabling locomotion, resetting, or falling over fails it. A zero
+`/cmd_vel` does not preempt, so the bridge's own stale-command watchdog cannot cancel a
+motion that is already stopping.
 
 The auxiliary mouth deliberately sits outside the policy observation/action
 contract. Call `/locomotion/mouth` (`std_srvs/srv/SetBool`), or use the

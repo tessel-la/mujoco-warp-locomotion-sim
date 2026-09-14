@@ -1,0 +1,45 @@
+# Drive to a pose offset measured in the robot's base frame when the goal is accepted.
+#
+# The Microduck is holonomic on the ground, so forward/backward, lateral, turn in
+# place, and "go to a relative X/Y with a final heading" are all this one goal with
+# the unused fields left at zero:
+#
+#   forward 0.5 m        -> x: 0.5
+#   back 0.2 m           -> x: -0.2
+#   left 0.3 m           -> y: 0.3
+#   turn 90 deg left     -> yaw: 1.5708
+#   0.5 m ahead, facing right -> {x: 0.5, yaw: -1.5708}
+#
+# There is no vertical axis: the robot is a biped walking on the floor.
+#
+# The move runs the trained walking policy through the ordinary velocity command
+# path, closing the loop on odometry. It stops as soon as it is inside the tolerance
+# bands, so the tolerance is also the accuracy you get -- ask for a tighter one when
+# a goal needs it. The result reports the distance actually traveled and the error it
+# finished with, rather than claiming the offset was hit exactly.
+float64 x                  # metres, forward positive
+float64 y                  # metres, left positive
+float64 yaw                # radians, counter-clockwise positive
+float64 max_linear_speed   # m/s, 0 = simulator default; never raises the configured limit
+float64 max_angular_speed  # rad/s, 0 = simulator default
+float64 position_tolerance # metres, 0 = simulator default
+float64 yaw_tolerance      # radians, 0 = simulator default
+float64 timeout            # seconds, 0 = simulator default
+---
+bool success
+# succeeded | timeout | canceled | preempted | failed. A ROS action has no distinct
+# terminal state for a timeout, so this is what tells a timeout from a controller
+# failure, and an operator override from a cancelled goal.
+string outcome
+string message
+float64 traveled           # metres actually covered along the path taken
+float64 position_error     # metres still separating the robot from the requested offset
+float64 yaw_error          # radians of heading still outstanding
+float64 duration           # seconds the goal was active
+---
+string phase               # aligning | moving | settling | done
+float64 progress           # 0..1, the laggier of the translation and rotation axes
+float64 traveled           # metres covered so far
+float64 remaining          # metres still to cover
+float64 yaw_remaining      # radians still to turn
+string controller          # the control policy currently driving the robot

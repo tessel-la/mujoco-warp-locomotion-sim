@@ -11,6 +11,9 @@ from mujoco_warp_locomotion_sim.policy_controller import (
     ACTION_SIZE,
     DEFAULT_POSE,
     OBSERVATION_SIZE,
+    POSTURE_SETTLE_STEPS,
+    SIT_FLAG_DELAY_STEPS,
+    STAND_UP_STEPS,
     PolicyController,
 )
 
@@ -92,3 +95,98 @@ def test_policy_controller_switches_sit_and_one_shot_modes() -> None:
     for _ in range(140):
         controller.after_step(data)
     assert controller.mode == "walk"
+
+
+def test_a_persistent_mode_finishes_as_soon_as_it_is_active() -> None:
+    controller, data = make_controller()
+    before = controller.status()["episode"]
+
+    controller.request_mode("walk")
+    opened = controller.status()
+    assert opened["episode"] == before + 1
+    assert opened["kind"] == "persistent"
+    assert opened["phase"] == "running"
+
+    controller.after_step(data)
+    # Walking is the controller's resting state, not a motion with an end, so it is
+    # done once it is active rather than after an invented delay.
+    assert controller.status()["phase"] == "complete"
+
+
+def test_a_one_shot_mode_stays_running_until_it_hands_back_to_walking() -> None:
+    controller, data = make_controller()
+    controller.request_mode("kick_left")
+
+    for _ in range(24):
+        controller.after_step(data)
+        assert controller.status()["phase"] == "running"
+    progress = controller.status()["progress"]
+    assert 0.9 <= progress < 1.0
+
+    controller.after_step(data)
+    assert controller.mode == "walk"
+    assert controller.status()["phase"] == "complete"
+    assert controller.status()["progress"] == 1.0
+
+
+def steps_to_finish(controller, data, limit: int = 600) -> int:
+    for step in range(1, limit + 1):
+        controller.after_step(data)
+        if controller.status()["phase"] != "running":
+            return step
+    raise AssertionError("the episode never finished")
+
+
+def test_sit_and_stand_wait_for_the_posture_instead_of_matching_a_mode_name() -> None:
+    controller, data = make_controller()
+
+    # Both map onto the same `sitstand` session, so a check on the mode name alone
+    # would report either one complete the instant it was requested.
+    controller.request_mode("stand")
+    assert controller.mode == "sitstand"
+    assert controller.status()["kind"] == "transient"
+    assert steps_to_finish(controller, data) == POSTURE_SETTLE_STEPS
+
+    controller.request_mode("sit")
+    # `sit` holds the stand pose before the flag flips, and only then settles.
+    assert steps_to_finish(controller, data) == SIT_FLAG_DELAY_STEPS + POSTURE_SETTLE_STEPS
+    assert controller.status()["phase"] == "complete"
+    controller.targets(data)
+    assert controller.last_observation[48] == 1.0
+
+
+def test_walking_out_of_a_sit_waits_for_the_stand_up() -> None:
+    controller, data = make_controller()
+    controller.request_mode("sit")
+    steps_to_finish(controller, data)
+
+    controller.request_mode("walk")
+    # Standing back up first is a real transition, so this episode is not persistent.
+    assert controller.status()["kind"] == "transient"
+    assert steps_to_finish(controller, data) == STAND_UP_STEPS
+    assert controller.mode == "walk"
+    assert controller.status()["phase"] == "complete"
+
+
+def test_an_episode_abandoned_by_a_reset_is_reported_as_failed() -> None:
+    controller, data = make_controller()
+    controller.request_mode("roulade")
+    controller.after_step(data)
+    assert controller.status()["phase"] == "running"
+
+    controller.reset()
+
+    assert controller.status()["phase"] == "failed"
+    assert controller.status()["request"] == "roulade"
+
+
+def test_the_episode_counter_never_goes_backwards() -> None:
+    controller, data = make_controller()
+    controller.request_mode("kick_left")
+    episode = controller.status()["episode"]
+
+    controller.reset()
+
+    assert controller.status()["episode"] == episode
+    controller.request_mode("kick_right")
+    assert controller.status()["episode"] == episode + 1

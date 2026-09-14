@@ -16,7 +16,7 @@ import rclpy
 from builtin_interfaces.msg import Time as TimeMessage
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import TransformStamped, Twist
-from microduck_interfaces.action import ExecuteMotion
+from microduck_interfaces.action import ExecuteMotion, MoveRelative
 from nav_msgs.msg import Odometry
 from PIL import Image as PillowImage
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -118,6 +118,15 @@ class MujocoWarpRosBridge(Node):
             cancel_callback=self._motion_cancel,
             callback_group=self._motion_callback_group,
         )
+        self.move_relative_action = ActionServer(
+            self,
+            MoveRelative,
+            "/locomotion/move_relative",
+            self._execute_move_relative,
+            goal_callback=self._move_relative_goal,
+            cancel_callback=self._motion_cancel,
+            callback_group=self._motion_callback_group,
+        )
 
         self._last_cmd_at = 0.0
         self._watchdog_stopped = True
@@ -146,6 +155,7 @@ class MujocoWarpRosBridge(Node):
         self._camera_thread.join(timeout=2.0)
         self.ready_file.unlink(missing_ok=True)
         self.motion_action.destroy()
+        self.move_relative_action.destroy()
         return super().destroy_node()
 
     def _receive_command(self, message: Twist) -> None:
@@ -258,6 +268,8 @@ class MujocoWarpRosBridge(Node):
             response.message = str(error)
         return response
 
+    MOTION_POLL_PERIOD = 0.05
+
     def _motion_goal(self, goal_request: ExecuteMotion.Goal) -> GoalResponse:
         motion = goal_request.motion.strip().lower()
         if motion not in self.MOTIONS:
@@ -265,82 +277,165 @@ class MujocoWarpRosBridge(Node):
             return GoalResponse.REJECT
         return GoalResponse.ACCEPT
 
+    def _move_relative_goal(self, goal_request: MoveRelative.Goal) -> GoalResponse:
+        offsets = (goal_request.x, goal_request.y, goal_request.yaw)
+        limits = (
+            goal_request.max_linear_speed,
+            goal_request.max_angular_speed,
+            goal_request.position_tolerance,
+            goal_request.yaw_tolerance,
+            goal_request.timeout,
+        )
+        if not all(math.isfinite(float(value)) for value in (*offsets, *limits)):
+            self.get_logger().warning("Rejecting move_relative goal with non-finite values")
+            return GoalResponse.REJECT
+        if any(float(value) < 0.0 for value in limits):
+            self.get_logger().warning("Rejecting move_relative goal with a negative limit")
+            return GoalResponse.REJECT
+        return GoalResponse.ACCEPT
+
     @staticmethod
     def _motion_cancel(_: Any) -> CancelResponse:
         return CancelResponse.ACCEPT
 
+    @staticmethod
+    def _motion_failure(message: str, outcome: str = "failed") -> dict[str, Any]:
+        return {
+            "id": -1,
+            "state": "aborted",
+            "outcome": outcome,
+            "message": message,
+            "phase": "done",
+            "progress": 0.0,
+            "traveled": 0.0,
+            "remaining": 0.0,
+            "yaw_remaining": 0.0,
+            "controller": "",
+            "duration": 0.0,
+            "elapsed": 0.0,
+        }
+
+    def _cancel_motion(self, motion_id: int) -> None:
+        try:
+            self._request_json(f"/api/v1/motion/{motion_id}/cancel", method="POST", payload={})
+        except Exception as error:
+            self._warn_throttled(f"Could not cancel motion {motion_id}: {error}")
+
+    def _run_motion_goal(
+        self, goal_handle: Any, request: dict[str, Any], build_feedback: Any
+    ) -> dict[str, Any]:
+        """Hold one action goal open for exactly as long as the simulator is busy.
+
+        Both action servers share this. The simulator owns a single motion slot and
+        decides when the closed loop or the control policy has actually finished, so
+        this only mirrors that decision into the goal's lifecycle -- it never guesses
+        at completion from mode strings or fixed delays.
+
+        The slot carries a monotonically increasing id. Seeing a different id means
+        something else took the robot, which is reported as a preemption rather than
+        as this goal succeeding on another goal's work.
+        """
+        try:
+            accepted = self._request_json("/api/v1/motion", method="POST", payload=request)
+            motion_id = int(accepted["motion"]["id"])
+        except Exception as error:
+            goal_handle.abort()
+            return self._motion_failure(str(error))
+
+        canceling = False
+        while rclpy.ok():
+            if goal_handle.is_cancel_requested and not canceling:
+                canceling = True
+                self._cancel_motion(motion_id)
+            try:
+                status = self._request_json("/api/v1/motion")
+            except Exception as error:
+                self._cancel_motion(motion_id)
+                goal_handle.abort()
+                return self._motion_failure(str(error))
+            if int(status.get("id", -1)) != motion_id:
+                status = self._motion_failure("another motion took the robot", "preempted")
+            state = str(status.get("state", ""))
+            if state == "running":
+                goal_handle.publish_feedback(build_feedback(status))
+                time.sleep(self.MOTION_POLL_PERIOD)
+                continue
+            if state == "succeeded":
+                goal_handle.succeed()
+            elif state == "canceled":
+                goal_handle.canceled()
+            else:
+                goal_handle.abort()
+            return status
+
+        goal_handle.abort()
+        return self._motion_failure("the bridge shut down while the motion was running")
+
+    @staticmethod
+    def _execute_motion_feedback(status: dict[str, Any]) -> ExecuteMotion.Feedback:
+        feedback = ExecuteMotion.Feedback()
+        feedback.phase = str(status.get("phase", ""))
+        feedback.active_mode = str(status.get("controller", ""))
+        feedback.progress = float(status.get("progress", 0.0))
+        feedback.elapsed = float(status.get("elapsed", 0.0))
+        return feedback
+
     def _execute_motion(self, goal_handle: Any) -> ExecuteMotion.Result:
         motion = goal_handle.request.motion.strip().lower()
+        status = self._run_motion_goal(
+            goal_handle,
+            {
+                "kind": "policy",
+                "motion": motion,
+                "timeout": float(goal_handle.request.timeout),
+            },
+            self._execute_motion_feedback,
+        )
         result = ExecuteMotion.Result()
-        try:
-            endpoint = "/api/v1/jump" if motion == "jump" else "/api/v1/policy"
-            payload = {} if motion == "jump" else {"mode": motion}
-            self._request_json(endpoint, method="POST", payload=payload)
-            accepted_at = time.monotonic()
-            started = False
-            one_shot = motion in {
-                "jump",
-                "ground_pick",
-                "kick_left",
-                "kick_right",
-                "roulade",
-                "recover",
-            }
-            deadline = accepted_at + (8.0 if one_shot else 1.25)
-            while time.monotonic() < deadline:
-                if goal_handle.is_cancel_requested:
-                    goal_handle.canceled()
-                    result.success = False
-                    result.message = f"{motion} canceled"
-                    result.final_mode = "canceled"
-                    return result
-                state = self._request_json("/api/v1/state")
-                active_mode = str(state.get("mode", "unknown"))
-                policy_mode = str(state.get("policy", {}).get("mode", active_mode))
-                feedback = ExecuteMotion.Feedback()
-                feedback.phase = "running"
-                feedback.active_mode = active_mode
-                goal_handle.publish_feedback(feedback)
-                if motion == "jump":
-                    started = started or active_mode == "jumping"
-                    complete = started and active_mode != "jumping"
-                elif one_shot:
-                    started = started or policy_mode == motion
-                    complete = started and policy_mode == "walk"
-                else:
-                    expected_modes = {
-                        motion,
-                        "sitstand" if motion in {"sit", "stand"} else motion,
-                    }
-                    complete = (
-                        time.monotonic() - accepted_at >= 0.75
-                        and policy_mode in expected_modes
-                    )
-                if complete:
-                    result.success = True
-                    result.message = f"{motion} completed"
-                    result.final_mode = active_mode
-                    goal_handle.succeed()
-                    return result
-                time.sleep(0.05)
-            if not one_shot:
-                state = self._request_json("/api/v1/state")
-                result.success = True
-                result.message = f"{motion} accepted"
-                result.final_mode = str(state.get("mode", motion))
-                goal_handle.succeed()
-                return result
-            result.success = False
-            result.message = f"{motion} did not complete before timeout"
-            result.final_mode = "timeout"
-            goal_handle.abort()
-            return result
-        except Exception as error:
-            result.success = False
-            result.message = str(error)
-            result.final_mode = "error"
-            goal_handle.abort()
-            return result
+        result.success = status.get("outcome") == "succeeded"
+        result.message = str(status.get("message", ""))
+        result.final_mode = str(status.get("controller", ""))
+        result.outcome = str(status.get("outcome", ""))
+        result.duration = float(status.get("duration", 0.0))
+        return result
+
+    @staticmethod
+    def _move_relative_feedback(status: dict[str, Any]) -> MoveRelative.Feedback:
+        feedback = MoveRelative.Feedback()
+        feedback.phase = str(status.get("phase", ""))
+        feedback.progress = float(status.get("progress", 0.0))
+        feedback.traveled = float(status.get("traveled", 0.0))
+        feedback.remaining = float(status.get("remaining", 0.0))
+        feedback.yaw_remaining = float(status.get("yaw_remaining", 0.0))
+        feedback.controller = str(status.get("controller", ""))
+        return feedback
+
+    def _execute_move_relative(self, goal_handle: Any) -> MoveRelative.Result:
+        request = goal_handle.request
+        status = self._run_motion_goal(
+            goal_handle,
+            {
+                "kind": "relative_move",
+                "x": float(request.x),
+                "y": float(request.y),
+                "yaw": float(request.yaw),
+                "max_linear_speed": float(request.max_linear_speed),
+                "max_angular_speed": float(request.max_angular_speed),
+                "position_tolerance": float(request.position_tolerance),
+                "yaw_tolerance": float(request.yaw_tolerance),
+                "timeout": float(request.timeout),
+            },
+            self._move_relative_feedback,
+        )
+        result = MoveRelative.Result()
+        result.success = status.get("outcome") == "succeeded"
+        result.outcome = str(status.get("outcome", ""))
+        result.message = str(status.get("message", ""))
+        result.traveled = float(status.get("traveled", 0.0))
+        result.position_error = float(status.get("remaining", 0.0))
+        result.yaw_error = float(status.get("yaw_remaining", 0.0))
+        result.duration = float(status.get("duration", 0.0))
+        return result
 
     def _publish_state(self) -> None:
         try:
@@ -458,6 +553,7 @@ class MujocoWarpRosBridge(Node):
             "device": state["device"],
             "policy": state.get("policy", {}),
             "mouth": state.get("mouth", {}),
+            "motion": state.get("motion", {}),
         }
         self.status_publisher.publish(String(data=json.dumps(status, separators=(",", ":"))))
         diagnostic = DiagnosticArray()
@@ -567,7 +663,9 @@ class MujocoWarpRosBridge(Node):
 def main() -> None:
     rclpy.init()
     node = MujocoWarpRosBridge()
-    executor = MultiThreadedExecutor(num_threads=4)
+    # Two action servers can each hold a thread for the length of a motion, on top of
+    # the state, camera, and watchdog timers.
+    executor = MultiThreadedExecutor(num_threads=6)
     executor.add_node(node)
     try:
         executor.spin()

@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from .backend import JumpEpisode
 from .config import Settings
 from .policy_controller import PolicyController
 
@@ -33,6 +34,9 @@ MICRODUCK_STAND_TARGETS = np.asarray(
 MOUTH_CLOSED_TARGET = 0.0
 MOUTH_OPEN_TARGET = -0.48
 JUMP_TAKEOFF_VELOCITY = 1.35
+# Trunk height above which the robot counts as off the ground. Shared by the takeoff
+# gate, the reported mode, and the jump episode so all three agree on "airborne".
+JUMP_GROUND_HEIGHT = 0.18
 
 
 class MujocoWarpBackend:
@@ -65,6 +69,7 @@ class MujocoWarpBackend:
         self._mouth_target = MOUTH_CLOSED_TARGET
         self._mouth_open = False
         self._jump_requested = False
+        self._jump = JumpEpisode()
         self._sensor_slices: dict[str, slice] = {}
         self._policy: PolicyController | None = None
 
@@ -150,6 +155,7 @@ class MujocoWarpBackend:
         self._mouth_target = MOUTH_CLOSED_TARGET
         self._mouth_open = False
         self._jump_requested = False
+        self._jump.abandon()
         if self._policy is not None:
             self._policy.reset()
         self._mjw_model = self._mjw.put_model(self._model)
@@ -164,6 +170,8 @@ class MujocoWarpBackend:
         self.enabled = enabled
         if not enabled:
             self.command = [0.0, 0.0, 0.0]
+            self._jump_requested = False
+            self._jump.abandon()
 
     def set_policy(self, mode: str) -> str:
         if self._policy is None:
@@ -177,6 +185,7 @@ class MujocoWarpBackend:
     def jump(self) -> None:
         if self.enabled:
             self._jump_requested = True
+            self._jump.request()
 
     def _targets(self) -> np.ndarray:
         vx, vy, wz = self.command if self.enabled else (0.0, 0.0, 0.0)
@@ -243,12 +252,16 @@ class MujocoWarpBackend:
             qvel = np.asarray(self._host_data.qvel, dtype=np.float32).copy()
             # Jump is an operator-facing simulation primitive. It deliberately
             # leaves the 14-value learned action contract unchanged.
-            if self._host_data.xpos[self._body_id, 2] <= 0.18 and abs(qvel[2]) < 0.25:
+            if self._host_data.xpos[self._body_id, 2] <= JUMP_GROUND_HEIGHT and abs(qvel[2]) < 0.25:
                 qvel[2] = JUMP_TAKEOFF_VELOCITY
                 self._wp.copy(
                     self._data.qvel,
                     self._wp.array([qvel], dtype=self._wp.float32, device=self.device),
                 )
+            else:
+                # Already off the ground: this jump will never leave it, so say so
+                # rather than leaving a caller waiting for a takeoff that cannot come.
+                self._jump.refuse()
             self._jump_requested = False
 
         # RL policies act only through the 14 joint targets. The fallback
@@ -268,6 +281,9 @@ class MujocoWarpBackend:
         self._mjw.get_data_into(self._host_data, self._model, self._data)
         if self._viewer is not None:
             self._viewer.sync()
+        self._jump.observe(
+            float(self._host_data.xpos[self._body_id, 2]) > JUMP_GROUND_HEIGHT
+        )
         if self._policy is not None and policy_tick and self._policy.after_step(self._host_data):
             self.reset()
 
@@ -354,7 +370,7 @@ class MujocoWarpBackend:
         # legitimately lower the trunk below 6 cm without being a fall.
         gravity_z = self._projected_gravity_z(orientation)
         fallen = gravity_z > -0.5 or position[2] < 0.02
-        jumping = position[2] > 0.18 and abs(float(self._host_data.qvel[2])) > 0.1
+        jumping = position[2] > JUMP_GROUND_HEIGHT and abs(float(self._host_data.qvel[2])) > 0.1
         return {
             "backend": self.name,
             "device": self.device,
@@ -386,6 +402,7 @@ class MujocoWarpBackend:
                 "opened": self._mouth_open,
                 "position": float(self._host_data.qpos[self._mouth_qpos]),
             },
+            "jump": self._jump.status(),
             "base_pose": {"position": position, "quaternion_wxyz": orientation},
             "base_twist": {
                 "linear": [float(value) for value in self._host_data.qvel[:3]],
@@ -408,6 +425,13 @@ class MujocoWarpBackend:
                 "observation_size": 61,
                 "action_size": 14,
                 "recovery": None,
+                # With RL disabled there is nothing to request and nothing to wait
+                # for: cmd_vel drives the reference gait directly and continuously.
+                "episode": 0,
+                "request": "reference_gait",
+                "kind": "persistent",
+                "phase": "complete",
+                "progress": 1.0,
             },
         }
 

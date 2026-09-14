@@ -33,6 +33,42 @@ OBSERVATION_SIZE = 61
 ACTION_SIZE = 14
 COMMAND_SIZE = 13
 
+# How long each requested mode occupies the controller. `persistent` modes have no
+# completion condition -- they are the controller's resting state and finish as soon
+# as they are active. `transient` modes drive the robot to a new posture and finish
+# once it has settled there. `oneshot` modes play a motion and hand control back to
+# walking on their own. Long-running actions read this to know what to wait for.
+MODE_KINDS = {
+    "walk": "persistent",
+    "stand": "transient",
+    "sit": "transient",
+    "ground_pick": "oneshot",
+    "kick_left": "oneshot",
+    "kick_right": "oneshot",
+    "roulade": "oneshot",
+    "recover": "oneshot",
+}
+
+# Control steps a sit/stand transition is given to settle after its command flag is
+# applied. `sit` delays the flag by 40 steps, so this starts counting after that.
+POSTURE_SETTLE_STEPS = 75
+SIT_FLAG_DELAY_STEPS = 40
+
+# Control steps each request takes to run its course, used only to report progress
+# while it does. These mirror the thresholds `_advance` actually switches on, so the
+# fraction reported never disagrees with when the episode ends.
+MODE_DURATION_STEPS = {
+    "walk": 1,
+    "stand": POSTURE_SETTLE_STEPS,
+    "sit": SIT_FLAG_DELAY_STEPS + POSTURE_SETTLE_STEPS,
+    "ground_pick": 140,
+    "kick_left": 25,
+    "kick_right": 25,
+    "roulade": 150,
+    "recover": 300,
+}
+STAND_UP_STEPS = 100
+
 SessionFactory = Callable[[Path], Any]
 
 
@@ -77,6 +113,13 @@ class PolicyController:
         self._recovery_state: str | None = None
         self._recovery_steps = 0
         self._upright_steps = 0
+        self._episode = 0
+        self._episode_request = "walk"
+        self._episode_kind = MODE_KINDS["walk"]
+        self._episode_phase = "complete"
+        self._episode_recovered = False
+        self._episode_steps = 0
+        self._posture_steps = 0
 
     def initialize(self) -> None:
         for name, path in self.settings.policy_paths().items():
@@ -118,6 +161,13 @@ class PolicyController:
         self._recovery_state = None
         self._recovery_steps = 0
         self._upright_steps = 0
+        # A physics reset abandons whatever was running. The record of the last request
+        # stays readable so an observer can see why it never completed, and the episode
+        # counter stays monotonic so a new episode is never mistaken for the old one.
+        if self._episode_phase == "running":
+            self._episode_phase = "failed"
+        self._episode_steps = 0
+        self._posture_steps = 0
 
     def set_command(self, linear_x: float, linear_y: float, angular_z: float) -> None:
         self.command[:] = (linear_x, linear_y, angular_z)
@@ -145,16 +195,26 @@ class PolicyController:
         self._phase = 0.0
         self._return_to_walk_steps = 0
         self._recovery_state = None
+        self._episode += 1
+        self._episode_request = requested
+        self._episode_kind = MODE_KINDS[requested]
+        self._episode_phase = "running"
+        self._episode_recovered = False
+        self._episode_steps = 0
+        self._posture_steps = 0
         if requested == "walk" and self.mode == "sitstand" and self._sit_flag > 0:
             self._sit_flag = 0.0
-            self._return_to_walk_steps = 100
+            self._return_to_walk_steps = STAND_UP_STEPS
+            # Standing back up before walking is a real transition, not the resting
+            # state, so this episode only finishes once that stand-up has played out.
+            self._episode_kind = "transient"
         elif requested == "stand":
             self.mode = "sitstand"
             self._sit_flag = 0.0
         elif requested == "sit":
             self.mode = "sitstand"
             self._sit_flag = 0.0
-            self._mode_steps = -40
+            self._mode_steps = -SIT_FLAG_DELAY_STEPS
         elif requested == "recover":
             self.mode = "recover"
             self.last_action.fill(0)
@@ -232,6 +292,53 @@ class PolicyController:
 
     def after_step(self, data: Any) -> bool:
         """Advance one policy tick. Return True when the simulation should reset."""
+        needs_reset = self._advance(data)
+        self._episode_steps += 1
+        if self._recovery_state is not None:
+            self._episode_recovered = True
+        if needs_reset:
+            self._episode_phase = "failed"
+        else:
+            self._close_finished_episode()
+        return needs_reset
+
+    def _episode_progress(self) -> float:
+        """How far through the requested mode the controller is, as a fraction."""
+        if self._episode_phase != "running":
+            return 1.0
+        if self._episode_request == "walk" and self._return_to_walk_steps > 0:
+            return 1.0 - self._return_to_walk_steps / STAND_UP_STEPS
+        duration = MODE_DURATION_STEPS[self._episode_request]
+        return min(1.0, max(0.0, self._episode_steps / duration))
+
+    def _close_finished_episode(self) -> None:
+        """Mark the requested mode finished once the state machine has run its course.
+
+        This only reads the transitions `_advance` already performs, so waiting on an
+        episode and watching the controller can never disagree.
+        """
+        if self._episode_phase != "running":
+            return
+        if self._episode_kind == "persistent":
+            # Walking is the controller's resting state, not a motion with an end.
+            self._episode_phase = "complete"
+        elif self._episode_kind == "oneshot":
+            # Every one-shot policy hands control back to walking when it is done.
+            if self.mode == "walk" and self._recovery_state is None:
+                self._episode_phase = "failed" if self._episode_recovered else "complete"
+        elif self._episode_request == "walk":
+            # Standing back up before walking; the existing countdown owns the timing.
+            if self._return_to_walk_steps == 0 and self.mode == "walk":
+                self._episode_phase = "complete"
+        elif self.mode == "sitstand" and self._mode_steps > 0:
+            # The posture flag is applied at step zero, which `sit` delays by 40 steps.
+            # Settling is counted over the steps that flag is actually in effect, so
+            # both postures get the same window measured from the same moment.
+            self._posture_steps += 1
+            if self._posture_steps >= POSTURE_SETTLE_STEPS:
+                self._episode_phase = "complete"
+
+    def _advance(self, data: Any) -> bool:
         self._mode_steps += 1
         if self.mode == "sitstand" and self._mode_steps == 0:
             self._sit_flag = 1.0
@@ -294,4 +401,9 @@ class PolicyController:
             "observation_size": OBSERVATION_SIZE,
             "action_size": ACTION_SIZE,
             "recovery": self._recovery_state,
+            "episode": self._episode,
+            "request": self._episode_request,
+            "kind": self._episode_kind,
+            "phase": self._episode_phase,
+            "progress": self._episode_progress(),
         }

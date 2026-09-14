@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "tree": {
+    "id": "microduck-failure-recovery",
+    "name": "Microduck: cancel and fall back",
+    "description": "A deliberately unreachable 5 m walk wrapped in a 4 s Timeout. The timeout aborts the node, Robo-Boy cancels the goal over rosbridge, and the simulator reports the motion as canceled rather than leaving it running. The Selector then falls back to a safe posture, so the tree as a whole still succeeds.",
+    "createdAt": 0,
+    "updatedAt": 0,
+    "nodes": [
+      { "id": "selector", "type": "selector", "position": { "x": 80, "y": 170 }, "data": { "label": "Try, else recover", "type": "selector" } },
+      { "id": "budget", "type": "timeout", "position": { "x": 380, "y": 90 }, "data": { "label": "4 s budget", "timeout": 4000 } },
+      { "id": "too-far", "type": "action", "position": { "x": 660, "y": 90 }, "data": { "label": "Forward 5 m (will not finish)", "actionName": "/locomotion/move_relative", "actionType": "microduck_interfaces/action/MoveRelative", "parameters": { "x": 5.0, "y": 0.0, "yaw": 0.0, "max_linear_speed": 0.0, "max_angular_speed": 0.0, "position_tolerance": 0.0, "yaw_tolerance": 0.0, "timeout": 60.0 }, "timeout": 60000 } },
+      { "id": "fallback", "type": "action", "position": { "x": 380, "y": 250 }, "data": { "label": "Fall back to standing", "actionName": "/locomotion/execute_motion", "actionType": "microduck_interfaces/action/ExecuteMotion", "parameters": { "motion": "stand", "timeout": 10.0 }, "timeout": 15000 } }
+    ],
+    "edges": [
+      { "id": "selector-budget", "source": "selector", "target": "budget" },
+      { "id": "budget-too-far", "source": "budget", "target": "too-far" },
+      { "id": "selector-fallback", "source": "selector", "target": "fallback" }
+    ]
+  }
+}

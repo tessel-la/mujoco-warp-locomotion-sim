@@ -1,10 +1,32 @@
+# Run one Microduck control policy and stay active until it reaches its own
+# completion condition.
+#
 # RL modes: walk, stand, sit, ground_pick, kick_left, kick_right, roulade, recover.
 # Simulator primitive: jump (not an RL policy).
+#
+# The three classes of motion finish differently, and the goal waits for whichever
+# applies rather than for a fixed delay:
+#
+#   persistent (walk)          - the controller's resting state; done once it is active
+#   transient (sit, stand)     - done once the robot has settled into the new posture
+#   one-shot (kicks, roulade,  - done when the policy hands control back to walking
+#             ground_pick, recover, jump)
+#
+# A motion that knocked the robot over and needed automatic recovery reports failure
+# rather than success.
 string motion
+float64 timeout            # seconds, 0 = simulator default
 ---
 bool success
 string message
 string final_mode
+# succeeded | timeout | canceled | preempted | failed. A ROS action has no distinct
+# terminal state for a timeout, so this is what tells a timeout from a controller
+# failure, and an operator override from a cancelled goal.
+string outcome
+float64 duration           # seconds the goal was active
 ---
-string phase
+string phase               # starting | running | done
 string active_mode
+float64 progress           # 0..1 through the requested motion
+float64 elapsed            # seconds since the goal was accepted

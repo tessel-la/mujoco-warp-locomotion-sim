@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from . import motion
 from .backend import LocomotionBackend
 from .config import Settings
 from .mock_backend import MockBackend
@@ -33,6 +34,8 @@ class SimulationRuntime:
         self._policy_requested: str | None = None
         self._mouth_requested: bool | None = None
         self._jump_requested = False
+        self._motion = motion.MotionController(settings.motion, settings.control)
+        self._motion_command: list[float] | None = None
         self._state_condition = threading.Condition()
         self._state: dict[str, Any] | None = None
         self._state_sequence = 0
@@ -73,9 +76,16 @@ class SimulationRuntime:
             self._clamp(linear_y, self.settings.control.max_linear_y),
             self._clamp(angular_z, self.settings.control.max_angular_z),
         ]
+        now = time.monotonic()
+        if max(abs(value) for value in values) > 1e-9:
+            # An operator reaching for the stick outranks a running motion. A zero
+            # command is deliberately not an override: the bridge's watchdog posts one
+            # after a teleoperation publisher goes quiet, and a motion that is already
+            # in charge of stopping must not be cancelled by that.
+            self._motion.abort(motion.PREEMPTED, "operator velocity command", now)
         with self._command_lock:
             self._command = values
-            self._command_time = time.monotonic()
+            self._command_time = now
         return {"linear_x": values[0], "linear_y": values[1], "angular_z": values[2]}
 
     @staticmethod
@@ -83,6 +93,8 @@ class SimulationRuntime:
         return max(-maximum, min(maximum, value))
 
     def set_enabled(self, enabled: bool) -> None:
+        if not enabled:
+            self._motion.abort(motion.FAILED, "locomotion disabled", time.monotonic())
         with self._command_lock:
             self._enabled = enabled
             if not enabled:
@@ -90,12 +102,14 @@ class SimulationRuntime:
                 self._command_time = time.monotonic()
 
     def request_reset(self) -> None:
+        self._motion.abort(motion.FAILED, "simulation reset", time.monotonic())
         with self._command_lock:
             self._reset_requested = True
             self._command = [0.0, 0.0, 0.0]
             self._command_time = time.monotonic()
 
     def request_policy(self, mode: str) -> str:
+        self._motion.abort(motion.PREEMPTED, "policy changed directly", time.monotonic())
         with self._command_lock:
             self._policy_requested = mode
         return mode
@@ -106,8 +120,19 @@ class SimulationRuntime:
         return opened
 
     def request_jump(self) -> None:
+        self._motion.abort(motion.PREEMPTED, "jump requested directly", time.monotonic())
         with self._command_lock:
             self._jump_requested = True
+
+    def start_motion(self, spec: motion.MotionSpec) -> dict[str, Any]:
+        """Take the motion slot, preempting whatever held it."""
+        return self._motion.request(spec, time.monotonic())
+
+    def cancel_motion(self, motion_id: int) -> bool:
+        return self._motion.cancel(motion_id, time.monotonic())
+
+    def motion_status(self) -> dict[str, Any]:
+        return self._motion.status(time.monotonic())
 
     def latest_state(self) -> dict[str, Any] | None:
         with self._state_condition:
@@ -165,14 +190,20 @@ class SimulationRuntime:
                     self._mouth_requested = None
                     jump = self._jump_requested
                     self._jump_requested = False
+                    motion_command = self._motion_command
+                if motion_command is not None:
+                    command = list(motion_command)
                 if stale or not enabled:
+                    # Zeroing here outranks the motion override, which is the safe
+                    # ordering: disabling aborts the motion outright, and a motion that
+                    # is still driving refreshes the timestamp so `stale` cannot fire.
                     command = [0.0, 0.0, 0.0]
                 if reset:
                     self._backend.reset()
                     next_state = now
                     next_frame = now
                 if policy is not None:
-                    self._backend.set_policy(policy)
+                    self._apply_policy(policy)
                 if mouth is not None:
                     self._backend.set_mouth(mouth)
                 if jump:
@@ -182,7 +213,7 @@ class SimulationRuntime:
                 self._backend.step()
 
                 if now >= next_state:
-                    self._publish_state(stale)
+                    self._publish_state(stale, now)
                     next_state = now + 1.0 / self.settings.simulation.state_hz
                 if now >= next_frame:
                     self._publish_frame()
@@ -203,9 +234,42 @@ class SimulationRuntime:
             with self._frame_condition:
                 self._frame_condition.notify_all()
 
-    def _publish_state(self, command_stale: bool) -> None:
+    def _apply_policy(self, mode: str) -> bool:
+        """Switch modes without letting a rejected name take the physics loop down."""
+        assert self._backend is not None
+        try:
+            self._backend.set_policy(mode)
+        except ValueError:
+            return False
+        return True
+
+    def _drive_motion(self, state: dict[str, Any], now: float) -> None:
+        """Give the active motion one turn at the robot.
+
+        Runs at `state_hz`, on the state the loop just published, so closed-loop
+        control costs no extra backend call. The command is written back through the
+        same locked slot teleoperation uses, with the timestamp refreshed so the
+        staleness watchdog does not zero a motion that is still driving.
+        """
+        assert self._backend is not None
+        tick = self._motion.tick(state, now)
+        if tick.policy_request is not None and not self._apply_policy(tick.policy_request):
+            self._motion.abort(
+                motion.FAILED, f"policy mode {tick.policy_request!r} is unavailable", now
+            )
+            return
+        if tick.jump_request:
+            self._backend.jump()
+        with self._command_lock:
+            self._motion_command = tick.command
+            if tick.command is not None:
+                self._command_time = now
+
+    def _publish_state(self, command_stale: bool, now: float) -> None:
         assert self._backend is not None
         state = self._backend.state()
+        self._drive_motion(state, now)
+        state["motion"] = self._motion.status(now)
         with self._state_condition:
             self._state_sequence += 1
             state.update(

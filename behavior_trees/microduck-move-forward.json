@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "tree": {
+    "id": "microduck-move-forward",
+    "name": "Microduck: move forward 0.5 m",
+    "description": "The smallest possible check that MoveRelative has real action semantics: the node stays Running while the robot walks and only turns green once the simulator reports it arrived.",
+    "createdAt": 0,
+    "updatedAt": 0,
+    "nodes": [
+      { "id": "forward", "type": "action", "position": { "x": 120, "y": 120 }, "data": { "label": "Forward 0.5 m", "actionName": "/locomotion/move_relative", "actionType": "microduck_interfaces/action/MoveRelative", "parameters": { "x": 0.5, "y": 0.0, "yaw": 0.0, "max_linear_speed": 0.0, "max_angular_speed": 0.0, "position_tolerance": 0.0, "yaw_tolerance": 0.0, "timeout": 20.0 }, "timeout": 25000 } }
+    ],
+    "edges": []
+  }
+}

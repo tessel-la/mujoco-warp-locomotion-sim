@@ -56,6 +56,7 @@ def test_api_command_state_reset_enable_and_description() -> None:
         assert len(description["joint_names"]) == 15
         assert len(description["policy_joint_names"]) == 14
         assert description["motion_action"] == "/locomotion/execute_motion"
+        assert description["move_relative_action"] == "/locomotion/move_relative"
 
         response = await client.post(
             "/api/v1/command",
@@ -109,5 +110,60 @@ def test_urdf_etag_camera_and_validation() -> None:
         assert wrong_stream.status_code == 404
         invalid = await client.post("/api/v1/command", json={"linear_x": "NaN"})
         assert invalid.status_code == 422
+
+    run_api_test(assertions)
+
+
+def test_motion_endpoints_start_report_and_cancel_one_slot() -> None:
+    async def assertions(client: AsyncClient) -> None:
+        idle = (await client.get("/api/v1/motion")).json()
+        assert idle["state"] == "idle"
+        assert idle["id"] == 0
+
+        started = await client.post(
+            "/api/v1/motion", json={"kind": "relative_move", "x": 0.4, "timeout": 20.0}
+        )
+        assert started.status_code == 202
+        motion = started.json()["motion"]
+        assert motion["kind"] == "relative_move"
+        assert motion["state"] == "running"
+
+        running = (await client.get("/api/v1/motion")).json()
+        assert running["id"] == motion["id"]
+
+        # A cancel names the motion it means, so it can never end someone else's.
+        stale = await client.post(f"/api/v1/motion/{motion['id'] + 1}/cancel")
+        assert stale.json()["canceled"] is False
+        canceled = await client.post(f"/api/v1/motion/{motion['id']}/cancel")
+        assert canceled.json()["canceled"] is True
+        assert canceled.json()["motion"]["outcome"] == "canceled"
+
+        policy = await client.post(
+            "/api/v1/motion", json={"kind": "policy", "motion": "kick_left"}
+        )
+        assert policy.status_code == 202
+        # A new request takes the slot, so ids are how a caller detects preemption.
+        assert policy.json()["motion"]["id"] == motion["id"] + 1
+
+    run_api_test(assertions)
+
+
+def test_motion_requests_reject_values_the_robot_cannot_honour() -> None:
+    async def assertions(client: AsyncClient) -> None:
+        for payload in (
+            {"kind": "relative_move", "x": "NaN"},
+            {"kind": "relative_move", "timeout": -1.0},
+            {"kind": "relative_move", "max_linear_speed": -0.1},
+            {"kind": "policy", "motion": "moonwalk"},
+            {"kind": "teleport", "x": 1.0},
+        ):
+            response = await client.post("/api/v1/motion", json=payload)
+            assert response.status_code == 422, payload
+
+        # `jump` is a simulator primitive: reachable as a motion, never as a policy.
+        assert (await client.post("/api/v1/policy", json={"mode": "jump"})).status_code == 422
+        assert (
+            await client.post("/api/v1/motion", json={"kind": "policy", "motion": "jump"})
+        ).status_code == 202
 
     run_api_test(assertions)

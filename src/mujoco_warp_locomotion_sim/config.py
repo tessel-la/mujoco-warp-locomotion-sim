@@ -89,6 +89,30 @@ class PolicySettings:
 
 
 @dataclass(frozen=True)
+class MotionSettings:
+    """Defaults for the closed-loop relative-move primitive and the action lifecycle.
+
+    A goal may lower the speeds and tolerances but never raise them past the
+    `[control]` limits, which remain the authority on what the robot may be asked
+    to do.
+    """
+
+    max_linear_speed: float
+    max_angular_speed: float
+    # Below these the walking policy produces no gait at all, so a move that still
+    # has ground to cover always commands at least this much.
+    min_linear_speed: float
+    min_angular_speed: float
+    linear_gain: float
+    angular_gain: float
+    position_tolerance: float
+    yaw_tolerance: float
+    settle_time: float
+    move_timeout: float
+    policy_timeout: float
+
+
+@dataclass(frozen=True)
 class CameraSettings:
     topic: str
     frame: str
@@ -106,6 +130,7 @@ class Settings:
     robot: RobotSettings
     control: ControlSettings
     policy: PolicySettings
+    motion: MotionSettings
     camera: CameraSettings
 
     def with_overrides(
@@ -169,6 +194,7 @@ def load_settings(path: str | Path | None = None) -> Settings:
         robot=RobotSettings(**_table(data, "robot")),
         control=ControlSettings(**_table(data, "control")),
         policy=PolicySettings(**policy_data),
+        motion=MotionSettings(**_table(data, "motion")),
         camera=CameraSettings(**_table(data, "camera")),
     )
     validate_settings(settings)
@@ -196,6 +222,27 @@ def validate_settings(settings: Settings) -> None:
         ]
         if missing:
             raise ValueError(f"policy files do not exist: {', '.join(missing)}")
+    motion = settings.motion
+    positive = {
+        "max_linear_speed": motion.max_linear_speed,
+        "max_angular_speed": motion.max_angular_speed,
+        "min_linear_speed": motion.min_linear_speed,
+        "min_angular_speed": motion.min_angular_speed,
+        "linear_gain": motion.linear_gain,
+        "angular_gain": motion.angular_gain,
+        "position_tolerance": motion.position_tolerance,
+        "yaw_tolerance": motion.yaw_tolerance,
+        "settle_time": motion.settle_time,
+        "move_timeout": motion.move_timeout,
+        "policy_timeout": motion.policy_timeout,
+    }
+    negative = sorted(name for name, value in positive.items() if value <= 0)
+    if negative:
+        raise ValueError(f"motion settings must be positive: {', '.join(negative)}")
+    if motion.min_linear_speed > motion.max_linear_speed:
+        raise ValueError("motion.min_linear_speed must not exceed motion.max_linear_speed")
+    if motion.min_angular_speed > motion.max_angular_speed:
+        raise ValueError("motion.min_angular_speed must not exceed motion.max_angular_speed")
     if not settings.robot.joint_names or len(settings.robot.joint_names) != len(
         set(settings.robot.joint_names)
     ):

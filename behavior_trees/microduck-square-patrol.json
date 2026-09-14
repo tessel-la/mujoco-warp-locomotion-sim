@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "tree": {
+    "id": "microduck-square-patrol",
+    "name": "Microduck: square patrol",
+    "description": "A Repeat runs one side of a square four times: walk a leg, then turn a quarter turn. Each corner lands where it does because the previous goal reported its real completion, so the errors do not compound into a spiral.",
+    "createdAt": 0,
+    "updatedAt": 0,
+    "nodes": [
+      { "id": "repeat", "type": "repeat", "position": { "x": 80, "y": 160 }, "data": { "label": "Four sides", "type": "repeat", "iterationLimit": 4 } },
+      { "id": "side", "type": "action", "position": { "x": 400, "y": 90 }, "data": { "label": "Side 0.4 m", "actionName": "/locomotion/move_relative", "actionType": "microduck_interfaces/action/MoveRelative", "parameters": { "x": 0.4, "y": 0.0, "yaw": 0.0, "max_linear_speed": 0.0, "max_angular_speed": 0.0, "position_tolerance": 0.0, "yaw_tolerance": 0.0, "timeout": 20.0 }, "timeout": 25000 } },
+      { "id": "corner", "type": "action", "position": { "x": 400, "y": 230 }, "data": { "label": "Corner 90 deg left", "actionName": "/locomotion/move_relative", "actionType": "microduck_interfaces/action/MoveRelative", "parameters": { "x": 0.0, "y": 0.0, "yaw": 1.5708, "max_linear_speed": 0.0, "max_angular_speed": 0.0, "position_tolerance": 0.0, "yaw_tolerance": 0.0, "timeout": 20.0 }, "timeout": 25000 } }
+    ],
+    "edges": [
+      { "id": "repeat-side", "source": "repeat", "target": "side" },
+      { "id": "repeat-corner", "source": "repeat", "target": "corner" }
+    ]
+  }
+}

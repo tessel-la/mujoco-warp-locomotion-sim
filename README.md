@@ -22,10 +22,14 @@ visualization-only URDF derived from that exact MJCF hierarchy and mesh set.
   pickup, left/right ball kicks, and roulade. The walking policy accepts forward,
   lateral, and turning velocity commands at 50 Hz and acts only through the 14
   simulated joints.
-- A ROS 2 `ExecuteMotion` action that makes those learned modes directly usable
-  as Robo Boy Behavior Tree action nodes. An explicitly non-RL jump primitive
-  and an auxiliary articulated mouth are available for operator demos without
-  changing the policies' fixed 14-action contract.
+- Two ROS 2 actions with real asynchronous semantics, for Robo Boy Behavior Tree
+  action nodes. `MoveRelative` walks a requested distance, sidestep, or turn by
+  closing the loop on odometry through the trained walking policy. `ExecuteMotion`
+  runs a learned mode and stays active until that mode reaches its own completion
+  condition. Both report progress while running and distinguish success, failure,
+  timeout, and cancellation. An explicitly non-RL jump primitive and an auxiliary
+  articulated mouth are available for operator demos without changing the policies'
+  fixed 14-action contract.
 - A policy-free reference gait is retained as an explicit fallback by setting
   `policy.enabled = false`.
 - A deterministic mock backend for API, ROS, and Robo Boy development without
@@ -151,6 +155,19 @@ ros2 topic pub --once /locomotion/policy_cmd std_msgs/msg/String '{data: stand}'
 ros2 topic pub --once /locomotion/policy_cmd std_msgs/msg/String '{data: walk}'
 ```
 
+Ask for a distance, a sidestep, or a turn instead of holding a velocity. The move
+runs the same walking policy, closing the loop on odometry, and finishes when the
+robot has arrived:
+
+```bash
+ros2 action send_goal /locomotion/move_relative \
+  microduck_interfaces/action/MoveRelative '{x: 0.5}' --feedback
+ros2 action send_goal /locomotion/move_relative \
+  microduck_interfaces/action/MoveRelative '{yaw: 1.5708}' --feedback
+ros2 action send_goal /locomotion/move_relative \
+  microduck_interfaces/action/MoveRelative '{x: 0.4, y: 0.2, yaw: -0.785}' --feedback
+```
+
 Reset after a fall, disable locomotion, or engage the shared emergency stop:
 
 ```bash
@@ -171,10 +188,19 @@ curl -X POST http://127.0.0.1:8010/api/v1/mouth \
   -H 'content-type: application/json' -d '{"opened":true}'
 curl -X POST http://127.0.0.1:8010/api/v1/jump \
   -H 'content-type: application/json' -d '{}'
+curl -X POST http://127.0.0.1:8010/api/v1/motion \
+  -H 'content-type: application/json' \
+  -d '{"kind":"relative_move","x":0.5}'
+curl -X POST http://127.0.0.1:8010/api/v1/motion \
+  -H 'content-type: application/json' \
+  -d '{"kind":"policy","motion":"kick_left"}'
+curl http://127.0.0.1:8010/api/v1/motion
 curl http://127.0.0.1:8010/api/v1/state
 ```
 
-Run a learned motion (or the simulator-only jump) through the ROS action API:
+Run a learned motion (or the simulator-only jump) through the ROS action API. The
+goal stays active for as long as the policy is actually running, so it composes in a
+Behavior Tree Sequence without guesswork:
 
 ```bash
 ros2 action send_goal /locomotion/execute_motion \
@@ -183,11 +209,20 @@ ros2 service call /locomotion/mouth std_srvs/srv/SetBool '{data: true}'
 ros2 service call /locomotion/jump std_srvs/srv/Trigger '{}'
 ```
 
-Ready-to-import Robo Boy trees and an optional movement panel live in
+Five ready-to-import Behavior Trees live in [`behavior_trees/`](behavior_trees),
+covering a single move, a move/turn/move sequence, a repeated patrol, a policy
+followed by a move, and cancellation with a fallback branch. Import any of them from
+Robo Boy's Behavior Tree toolbar.
+
+An optional movement panel and two further trees live in
 [`../robo-boy-microduck-control-panel`](../robo-boy-microduck-control-panel).
 The ROS sidecar exports `microduck_interfaces` into the named
 `microduck-interfaces` volume; the panel repository's opt-in Compose overlay
 mounts it into Robo Boy's rosbridge container.
+
+Changing an action's fields changes its type hash, so after pulling a new
+`microduck_interfaces` version rebuild the sidecar image **and** restart Robo Boy's
+rosbridge container, or the stale overlay will fail to deserialize goals.
 
 The checked-in `policies/manifest.json` pins every policy checksum and its
 upstream source. To restore or verify the bundle without reinstalling the
@@ -244,7 +279,8 @@ to `/policies` appear in this repository's `policies/` directory. Set
 | `/locomotion/camera/image_raw/compressed` | `sensor_msgs/msg/CompressedImage` | sim → Robo Boy | JPEG camera |
 | `/locomotion/camera/camera_info` | `sensor_msgs/msg/CameraInfo` | sim → Robo Boy | calibrated pinhole metadata |
 | `/locomotion/status` | `std_msgs/msg/String` | sim → Robo Boy | latched JSON mode/health |
-| `/locomotion/execute_motion` | `microduck_interfaces/action/ExecuteMotion` | Robo Boy → sim | run an RL mode or the simulator jump |
+| `/locomotion/execute_motion` | `microduck_interfaces/action/ExecuteMotion` | Robo Boy → sim | run an RL mode or the simulator jump to completion |
+| `/locomotion/move_relative` | `microduck_interfaces/action/MoveRelative` | Robo Boy → sim | walk to a pose offset in the base frame |
 | `/diagnostics` | `diagnostic_msgs/msg/DiagnosticArray` | sim → Robo Boy | standard diagnostic state |
 | `/locomotion/reset` | `std_srvs/srv/Empty` | Robo Boy → sim | reset to standing keyframe |
 | `/locomotion/enable` | `std_srvs/srv/SetBool` | Robo Boy → sim | controller enable switch |
