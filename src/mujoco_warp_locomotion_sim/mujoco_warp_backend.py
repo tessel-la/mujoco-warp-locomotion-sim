@@ -357,7 +357,10 @@ class MujocoWarpBackend:
         values = np.asarray(quaternion, dtype=np.float64)
         values /= max(float(np.linalg.norm(values)), 1e-12)
         _, x, y, _ = values
-        return -(1.0 - 2.0 * (x * x + y * y))
+        # A plain float: `fallen` is derived from this and goes out in the JSON state. A NumPy
+        # comparison would make it numpy.bool_, which cannot be serialized, so every state
+        # request failed while the robot was upside down (a roulade, any fall).
+        return float(-(1.0 - 2.0 * (x * x + y * y)))
 
     def _sensor(self, name: str) -> list[float]:
         return [float(value) for value in self._host_data.sensordata[self._sensor_slices[name]]]
