@@ -36,6 +36,14 @@ def test_fall_orientation_allows_an_upright_low_sit() -> None:
     ) == pytest.approx(0.0)
 
 
+def test_fall_orientation_is_a_plain_float_so_the_state_stays_serializable() -> None:
+    upside_down = (0.0, 1.0, 0.0, 0.0)
+    gravity_z = MujocoWarpBackend._projected_gravity_z(upside_down)
+    assert type(gravity_z) is float
+    fallen = gravity_z > -0.5 or 0.1 < 0.02
+    json.dumps({"fallen": fallen})
+
+
 def _quaternion_from_rpy(rpy: tuple[float, float, float]) -> tuple[float, float, float, float]:
     roll, pitch, yaw = rpy
     cr, sr = math.cos(roll / 2), math.sin(roll / 2)
