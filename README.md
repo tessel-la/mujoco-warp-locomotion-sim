@@ -9,6 +9,20 @@ non-commercial terms.** Those terms also apply to copies in the training tree an
 not replaced by MIT. Read [THIRD_PARTY.md](THIRD_PARTY.md) before using or redistributing
 this demo, particularly for commercial work.
 
+## Preview
+
+![Microduck Control companion panel with drive buttons, learned policy modes, and robot actions](docs/images/control-panel.png)
+
+The companion [Microduck Control panel](https://github.com/tessel-la/robo-boy-microduck-control-panel),
+shown with sample telemetry.
+
+![Synthetic mock-camera output showing a perspective grid, elapsed simulation time, and position](docs/images/mock-camera.jpg)
+
+Actual output from the policy-free mock backend. It is synthetic test imagery, not a
+render of Microduck's CAD model or proof of physical motion. These previews contain no
+third-party robot meshes; the real model's non-commercial terms remain unchanged.
+See [preview provenance](docs/images/README.md).
+
 ## Run it
 
 The Docker path targets Linux x86-64 with Docker Engine and Docker Compose **2.24.4 or
