@@ -13,7 +13,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 @dataclass(frozen=True)
 class ServerSettings:
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 8010
     cors_origins: list[str] = field(default_factory=list)
 
@@ -172,7 +172,13 @@ def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
     return value
 
 
-def load_settings(path: str | Path | None = None) -> Settings:
+def load_settings(
+    path: str | Path | None = None,
+    *,
+    backend: str | None = None,
+    device: str | None = None,
+    show_viewer: bool | None = None,
+) -> Settings:
     source = Path(path).expanduser().resolve() if path else default_config_path()
     with source.open("rb") as stream:
         data = tomllib.load(stream)
@@ -197,6 +203,7 @@ def load_settings(path: str | Path | None = None) -> Settings:
         motion=MotionSettings(**_table(data, "motion")),
         camera=CameraSettings(**_table(data, "camera")),
     )
+    settings = settings.with_overrides(backend=backend, device=device, show_viewer=show_viewer)
     validate_settings(settings)
     return settings
 
@@ -214,7 +221,7 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("control.control_hz must be positive")
     if settings.policy.action_scale <= 0:
         raise ValueError("policy.action_scale must be positive")
-    if settings.policy.enabled:
+    if settings.policy.enabled and settings.simulation.backend != "mock":
         missing = [
             str(path)
             for path in settings.policy.policy_paths().values()

@@ -101,9 +101,10 @@ if __name__ == "__main__":
     else:
         print(f"Directory {serve_directory} does not exist, serving from current directory")
     
-    httpd = ThreadedHTTPServer(('0.0.0.0', port), CORSRequestHandler)
+    host = os.environ.get('MJWARP_MESH_HOST', '127.0.0.1')
+    httpd = ThreadedHTTPServer((host, port), CORSRequestHandler)
     print("HTTP server started with CORS enabled.")
-    print(f"Serving HTTP on 0.0.0.0 port {port} (http://0.0.0.0:{port}/) ...")
+    print(f"Serving HTTP on {host} port {port} (http://{host}:{port}/) ...")
     
     try:
         httpd.serve_forever()

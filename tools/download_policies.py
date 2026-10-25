@@ -5,16 +5,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import tempfile
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY_DIR = ROOT / "policies"
 MANIFEST = POLICY_DIR / "manifest.json"
-BASE_URL = (
-    "https://huggingface.co/spaces/pollen-robotics/microduck-simulator/resolve/main/"
-    "app/public/policies"
-)
 
 
 def sha256(path: Path) -> str:
@@ -27,19 +25,31 @@ def sha256(path: Path) -> str:
 
 def main() -> None:
     manifest = json.loads(MANIFEST.read_text())
+    base_url = (
+        "https://huggingface.co/spaces/pollen-robotics/microduck-simulator/resolve/"
+        f"{manifest['revision']}/app/public/policies"
+    )
     POLICY_DIR.mkdir(parents=True, exist_ok=True)
     for filename, expected in manifest["files"].items():
         destination = POLICY_DIR / filename
         if destination.is_file() and sha256(destination) == expected:
             print(f"verified {filename}")
             continue
-        temporary = destination.with_suffix(destination.suffix + ".download")
-        urllib.request.urlretrieve(f"{BASE_URL}/{filename}?download=true", temporary)
-        actual = sha256(temporary)
-        if actual != expected:
+        with tempfile.NamedTemporaryFile(
+            dir=POLICY_DIR, suffix=".download", delete=False
+        ) as stream:
+            temporary = Path(stream.name)
+        try:
+            with urllib.request.urlopen(
+                f"{base_url}/{filename}?download=true", timeout=30
+            ) as source, temporary.open("wb") as stream:
+                shutil.copyfileobj(source, stream)
+            actual = sha256(temporary)
+            if actual != expected:
+                raise RuntimeError(f"checksum mismatch for {filename}: {actual} != {expected}")
+            temporary.replace(destination)
+        finally:
             temporary.unlink(missing_ok=True)
-            raise RuntimeError(f"checksum mismatch for {filename}: {actual} != {expected}")
-        temporary.replace(destination)
         print(f"downloaded {filename}")
 
 
