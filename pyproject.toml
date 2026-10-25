@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mujoco-warp-locomotion-sim"
-version = "0.2.0"
+version = "0.3.0"
 description = "MuJoCo Warp biped locomotion simulation with a Robo Boy ROS 2 bridge"
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
