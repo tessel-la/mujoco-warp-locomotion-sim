@@ -1,0 +1,29 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.5'
+      - run: uv sync --locked --extra dev --extra mjwarp --python 3.12
+      - run: python3 tools/download_policies.py
+      - run: uv run --frozen --extra dev --extra mjwarp pytest
+      - run: uv run --frozen --extra dev --extra mjwarp ruff check .
+      - run: uv run --frozen --extra dev mujoco-warp-locomotion-sim doctor --backend mock
+      - name: Check release version marker
+        run: grep -q '# x-release-please-version' uv.lock
+      - name: Check frozen Docker dependencies
+        run: |
+          uv export --frozen --no-dev --no-emit-project --extra mjwarp --output-file requirements.lock
+          uv export --frozen --no-dev --no-emit-project --output-file requirements-mock.lock
+          git diff --exit-code -- requirements.lock requirements-mock.lock
+      - run: docker compose -f docker-compose.yml -f docker-compose.mock.yml config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.cpu.yml config --quiet

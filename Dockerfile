@@ -24,11 +24,11 @@ RUN apt-get update \
         libxxf86vm1 \
     && rm -rf /var/lib/apt/lists/*
 
+ARG SIM_EXTRAS=mjwarp
 WORKDIR /app
-COPY pyproject.toml README.md ./
-RUN mkdir -p src/mujoco_warp_locomotion_sim \
-    && touch src/mujoco_warp_locomotion_sim/__init__.py \
-    && python -m pip install --no-cache-dir ".[mjwarp]"
+COPY pyproject.toml README.md requirements*.lock ./
+RUN if [ -n "${SIM_EXTRAS}" ]; then runtime_lock=requirements.lock; else runtime_lock=requirements-mock.lock; fi \
+    && python -m pip install --no-cache-dir --require-hashes -r "${runtime_lock}"
 
 COPY src ./src
 COPY config ./config
