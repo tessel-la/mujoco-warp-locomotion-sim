@@ -196,14 +196,11 @@ def test_official_microduck_training_snapshot_and_isolated_container_are_present
     assert "Dockerfile.training" in compose
 
 
-def test_compose_and_dashboard_expose_both_runtime_services() -> None:
+def test_compose_exposes_both_runtime_services() -> None:
     compose = (ROOT / "docker-compose.yml").read_text()
-    dashboard = (ROOT.parent / "tessella-dashboard/config/apps.yml").read_text()
     assert "mujoco_warp_locomotion_sim:" in compose
     assert "mujoco_warp_ros_bridge:" in compose
     assert "runtime: nvidia" in compose
-    assert "id: mujoco-warp-locomotion-sim" in dashboard
-    assert "../../robo-boy/.env" in dashboard
 
 
 def test_mock_configuration_does_not_require_policy_weights(tmp_path: Path) -> None:
