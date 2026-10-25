@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/tessel-la/mujoco-warp-locomotion-sim/compare/v0.2.0...v0.3.0) (2026-10-25)
+
+
+### Features
+
+* promote dev to main ([#11](https://github.com/tessel-la/mujoco-warp-locomotion-sim/issues/11)) ([2bff841](https://github.com/tessel-la/mujoco-warp-locomotion-sim/commit/2bff8414c8f4eed970ffa464935195fe46ec68d4))
+
+
+### Documentation
+
+* add readme previews with license provenance ([#10](https://github.com/tessel-la/mujoco-warp-locomotion-sim/issues/10)) ([e340bfb](https://github.com/tessel-la/mujoco-warp-locomotion-sim/commit/e340bfb90eb060adf965728f260ad6f32f21f9e8))
+
 ## [0.2.0](https://github.com/tessel-la/mujoco-warp-locomotion-sim/compare/v0.1.0...v0.2.0) (2026-10-25)
 
 
