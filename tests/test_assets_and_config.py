@@ -204,3 +204,21 @@ def test_compose_and_dashboard_expose_both_runtime_services() -> None:
     assert "runtime: nvidia" in compose
     assert "id: mujoco-warp-locomotion-sim" in dashboard
     assert "../../robo-boy/.env" in dashboard
+
+
+def test_mock_configuration_does_not_require_policy_weights(tmp_path: Path) -> None:
+    source = (ROOT / "config/default.toml").read_text()
+    source = source.replace('directory = "../policies"', f'directory = "{tmp_path}/missing"')
+    source = source.replace('"../assets/', f'"{ROOT}/assets/')
+    config = tmp_path / "config.toml"
+    config.write_text(source)
+    settings = load_settings(config, backend="mock", device="cpu")
+    assert settings.simulation.backend == "mock"
+    assert settings.server.host == "127.0.0.1"
+    with pytest.raises(ValueError, match="policy files do not exist"):
+        load_settings(config, backend="mujoco_warp", device="cpu")
+
+
+def test_invalid_backend_override_is_rejected() -> None:
+    with pytest.raises(ValueError, match="simulation.backend"):
+        load_settings(ROOT / "config/default.toml", backend="invalid")

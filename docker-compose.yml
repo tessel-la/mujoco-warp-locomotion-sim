@@ -19,7 +19,7 @@ services:
       - --device
       - "${MJWARP_DEVICE:-cuda:0}"
       - --host
-      - 0.0.0.0
+      - 127.0.0.1
     deploy:
       resources:
         reservations:
@@ -58,6 +58,7 @@ services:
       MJWARP_SIM_URL: http://127.0.0.1:8010
       MJWARP_ROBOT_URDF: /app/assets/microduck/microduck.urdf
       MJWARP_MESH_ROOT: /app/assets
+      MJWARP_MESH_HOST: ${MJWARP_MESH_HOST:-127.0.0.1}
       MJWARP_MESH_PORT: "8000"
       MJWARP_CMD_TOPIC: /cmd_vel
       MJWARP_ODOM_TOPIC: /odom

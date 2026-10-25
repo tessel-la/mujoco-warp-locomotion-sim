@@ -1,5 +1,9 @@
 services:
   mujoco_warp_locomotion_sim:
+    image: mujoco-warp-locomotion-sim:mock-local
+    build:
+      args:
+        SIM_EXTRAS: ""
     runtime: runc
     command:
       - mujoco-warp-locomotion-sim
@@ -9,7 +13,7 @@ services:
       - --backend
       - mock
       - --host
-      - 0.0.0.0
+      - 127.0.0.1
     deploy:
       resources:
         reservations:

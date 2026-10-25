@@ -84,3 +84,5 @@ appended as an auxiliary fifteenth actuator only when controls are copied into
 MuJoCo Warp. Jump writes a single bounded takeoff velocity into the simulated
 free base and is labeled as a simulator primitive by the HTTP, ROS action, and
 panel documentation.
+
+CPU physics uses native MuJoCo stepping with the same model, policy targets, and watchdogs. CUDA uses MuJoCo Warp. This avoids the pinned Warp CPU compiler failure while preserving the ROS/API contract.
