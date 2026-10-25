@@ -312,3 +312,5 @@ Install `.[mjwarp,dev]` to run `doctor --backend mujoco_warp --device cpu` or
 an NVIDIA GPU is the intended deployment path. This development extra is only
 for the operator runtime; use `docker-compose.training.yml` for Pollen's pinned
 RL environment.
+
+The optional [camera WebRTC gateway](docs/camera-webrtc.md) publishes plain WHEP video for Robo-Boy and other standard clients.
