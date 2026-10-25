@@ -35,7 +35,8 @@ def main() -> None:
     # MJWARP_SHOW_VIEWER lets a Compose overlay flip this on without restating `command:`, which
     # would fight with whichever device override is also active.
     show_viewer = getattr(args, "viewer", False) or os.environ.get("MJWARP_SHOW_VIEWER") == "1"
-    settings = load_settings(args.config).with_overrides(
+    settings = load_settings(
+        args.config,
         backend=args.backend,
         device=args.device,
         show_viewer=True if show_viewer else None,
@@ -59,7 +60,8 @@ def main() -> None:
 
     runtime = SimulationRuntime(settings)
     runtime.start()
-    deadline = time.monotonic() + 30.0
+    # Cold CUDA kernel compilation can exceed 30 s; match the image startup grace.
+    deadline = time.monotonic() + 180.0
     while not runtime.ready and not runtime.startup_error and time.monotonic() < deadline:
         time.sleep(0.05)
     if not runtime.ready:

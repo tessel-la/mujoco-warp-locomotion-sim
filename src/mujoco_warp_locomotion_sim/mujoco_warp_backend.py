@@ -40,7 +40,7 @@ JUMP_GROUND_HEIGHT = 0.18
 
 
 class MujocoWarpBackend:
-    """Single-world MJWarp runtime with RL and reference-gait controllers."""
+    """Single-world native MuJoCo CPU or MJWarp CUDA runtime with shared controllers."""
 
     name = "mujoco_warp"
 
@@ -76,16 +76,20 @@ class MujocoWarpBackend:
     def initialize(self) -> None:
         try:
             import mujoco
-            import mujoco_warp as mjw
-            import warp as wp
+
+            if self.device != "cpu":
+                import mujoco_warp as mjw
+                import warp as wp
         except ImportError as error:  # pragma: no cover - needs optional runtime
             raise RuntimeError(
                 "install the 'mjwarp' extra to use the MuJoCo Warp backend"
             ) from error
 
-        self._mujoco, self._mjw, self._wp = mujoco, mjw, wp
-        wp.init()
-        wp.set_device(self.device)
+        self._mujoco = mujoco
+        if self.device != "cpu":
+            self._mjw, self._wp = mjw, wp
+            wp.init()
+            wp.set_device(self.device)
         self._model = mujoco.MjModel.from_xml_path(str(self.settings.simulation.model))
         self._model.opt.timestep = self.settings.simulation.dt
         self._host_data = mujoco.MjData(self._model)
@@ -158,8 +162,9 @@ class MujocoWarpBackend:
         self._jump.abandon()
         if self._policy is not None:
             self._policy.reset()
-        self._mjw_model = self._mjw.put_model(self._model)
-        self._make_device_data()
+        if self.device != "cpu":
+            self._mjw_model = self._mjw.put_model(self._model)
+            self._make_device_data()
 
     def set_command(self, linear_x: float, linear_y: float, angular_z: float) -> None:
         self.command = [linear_x, linear_y, angular_z]
@@ -201,18 +206,11 @@ class MujocoWarpBackend:
             lift = max(0.0, wave) * speed_scale
             return [
                 side * wz * 0.12,
-                -side * 0.0872664626
-                + side * 0.05 * math.cos(self.phase) * activity
-                - vy * 0.20,
-                -side
-                * (0.457924 + self.settings.control.hip_swing * wave * speed_scale),
+                -side * 0.0872664626 + side * 0.05 * math.cos(self.phase) * activity - vy * 0.20,
+                -side * (0.457924 + self.settings.control.hip_swing * wave * speed_scale),
                 side * (-0.004940 + self.settings.control.knee_lift * lift),
                 side
-                * (
-                    0.452984
-                    - self.settings.control.ankle_swing * wave * speed_scale
-                    - 0.20 * lift
-                ),
+                * (0.452984 - self.settings.control.ankle_swing * wave * speed_scale - 0.20 * lift),
             ]
 
         return np.asarray(
@@ -243,10 +241,7 @@ class MujocoWarpBackend:
         control_targets = np.concatenate(
             (self._current_targets, np.asarray([self._mouth_target], dtype=np.float32))
         )
-        self._wp.copy(
-            self._data.ctrl,
-            self._wp.array([control_targets], dtype=self._wp.float32, device=self.device),
-        )
+        self._write_data("ctrl", control_targets)
 
         if self._jump_requested:
             qvel = np.asarray(self._host_data.qvel, dtype=np.float32).copy()
@@ -254,10 +249,7 @@ class MujocoWarpBackend:
             # leaves the 14-value learned action contract unchanged.
             if self._host_data.xpos[self._body_id, 2] <= JUMP_GROUND_HEIGHT and abs(qvel[2]) < 0.25:
                 qvel[2] = JUMP_TAKEOFF_VELOCITY
-                self._wp.copy(
-                    self._data.qvel,
-                    self._wp.array([qvel], dtype=self._wp.float32, device=self.device),
-                )
+                self._write_data("qvel", qvel)
             else:
                 # Already off the ground: this jump will never leave it, so say so
                 # rather than leaving a caller waiting for a takeoff that cannot come.
@@ -269,27 +261,33 @@ class MujocoWarpBackend:
         xfrc = np.zeros((self._model.nbody, 6), dtype=np.float32)
         if self._policy is None:
             self._apply_reference_assist(xfrc, vx, vy, wz)
-        self._wp.copy(
-            self._data.xfrc_applied,
-            self._wp.array([xfrc], dtype=self._wp.spatial_vector, device=self.device),
-        )
-        if self._graph is None:
-            self._mjw.step(self._mjw_model, self._data)
+        self._write_data("xfrc_applied", xfrc)
+        if self.device == "cpu":
+            self._mujoco.mj_step(self._model, self._host_data)
         else:
-            self._wp.capture_launch(self._graph)
-        self._wp.synchronize()
-        self._mjw.get_data_into(self._host_data, self._model, self._data)
+            if self._graph is None:
+                self._mjw.step(self._mjw_model, self._data)
+            else:
+                self._wp.capture_launch(self._graph)
+            self._wp.synchronize()
+            self._mjw.get_data_into(self._host_data, self._model, self._data)
         if self._viewer is not None:
             self._viewer.sync()
-        self._jump.observe(
-            float(self._host_data.xpos[self._body_id, 2]) > JUMP_GROUND_HEIGHT
-        )
+        self._jump.observe(float(self._host_data.xpos[self._body_id, 2]) > JUMP_GROUND_HEIGHT)
         if self._policy is not None and policy_tick and self._policy.after_step(self._host_data):
             self.reset()
 
-    def _apply_reference_assist(
-        self, xfrc: np.ndarray, vx: float, vy: float, wz: float
-    ) -> None:
+    def _write_data(self, name: str, value: np.ndarray) -> None:
+        if self.device == "cpu":
+            getattr(self._host_data, name)[:] = value
+        else:
+            dtype = self._wp.spatial_vector if name == "xfrc_applied" else self._wp.float32
+            self._wp.copy(
+                getattr(self._data, name),
+                self._wp.array([value], dtype=dtype, device=self.device),
+            )
+
+    def _apply_reference_assist(self, xfrc: np.ndarray, vx: float, vy: float, wz: float) -> None:
         """Apply the virtual boom used only by the non-RL reference gait."""
         yaw = self._yaw_from_wxyz(self._host_data.xquat[self._body_id])
         desired_world = np.asarray(
@@ -314,10 +312,7 @@ class MujocoWarpBackend:
         xfrc[self._body_id, 2] = float(
             np.clip(
                 self.settings.control.height_assist
-                * (
-                    self.settings.control.standing_height
-                    - self._host_data.xpos[self._body_id, 2]
-                )
+                * (self.settings.control.standing_height - self._host_data.xpos[self._body_id, 2])
                 - self.settings.control.height_damping * self._host_data.qvel[2],
                 -8.0,
                 8.0,

@@ -13,3 +13,5 @@ MJCF by `tools/export_microduck_urdf.py`; it is not an upstream Pollen file.
 The upstream code is Apache-2.0; see `LICENSE.rl`. The upstream README states
 that the 3D model files are Creative Commons BY-SA-NC. Preserve both notices
 when redistributing these assets.
+
+The exact pinned upstream model-license statement is preserved in [MODEL-LICENSE.md](MODEL-LICENSE.md). It does not specify a Creative Commons version. See the root [third-party notices](../../THIRD_PARTY.md) for scope, including training copies and the generated URDF.
