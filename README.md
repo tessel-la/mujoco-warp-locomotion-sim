@@ -127,3 +127,5 @@ controls mesh binding. ROS discovery remains separate from HTTP exposure.
 
 [MIT](LICENSE) for this integration. Policies, vendored training code, models, and their
 derivatives retain the terms documented in [THIRD_PARTY.md](THIRD_PARTY.md).
+
+The optional [camera WebRTC gateway](docs/camera-webrtc.md) publishes plain WHEP video for Robo-Boy and other standard clients.

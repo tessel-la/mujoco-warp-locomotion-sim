@@ -73,6 +73,46 @@ services:
       - microduck-interfaces:/overlay_export
     restart: unless-stopped
 
+  microduck_stream_gateway:
+    profiles: [webrtc]
+    image: bluenviron/mediamtx:1.20.1
+    network_mode: host
+    environment:
+      MTX_WEBRTCADDRESS: ":${STREAM_WHEP_PORT:-8889}"
+      MTX_WEBRTCLOCALUDPADDRESS: ":${STREAM_ICE_PORT:-8189}"
+      MTX_WEBRTCLOCALTCPADDRESS: ":${STREAM_ICE_PORT:-8189}"
+      MTX_APIADDRESS: ":${STREAM_API_PORT:-9997}"
+      MTX_PATHDEFAULTS_SOURCE: udp+rtp://127.0.0.1:${STREAM_RTP_INPUT_PORT:-5004}
+      MTX_WEBRTCADDITIONALHOSTS: ${STREAM_ADDITIONAL_HOSTS:-}
+    volumes:
+      - ./config/mediamtx.yml:/mediamtx.yml:ro
+    restart: unless-stopped
+
+  microduck_camera_encoder:
+    profiles: [webrtc]
+    build:
+      context: .
+      dockerfile: stream/Dockerfile
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+    network_mode: host
+    depends_on:
+      mujoco_warp_ros_bridge:
+        condition: service_started
+      microduck_stream_gateway:
+        condition: service_started
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: ${ROS_LOCALHOST_ONLY:-0}
+      ROS_STATIC_PEERS: ${ROS_STATIC_PEERS:-}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE:-SUBNET}
+      CYCLONEDDS_URI: ${CYCLONEDDS_URI:-file:///etc/cyclonedds/config.xml}
+      STREAM_RTP_INPUT_PORT: ${STREAM_RTP_INPUT_PORT:-5004}
+    volumes:
+      - ${CYCLONEDDS_CONFIG_PATH:-./config/cyclonedds/default.xml}:/etc/cyclonedds/config.xml:ro
+    restart: unless-stopped
+
 volumes:
   microduck-interfaces:
     name: microduck-interfaces
